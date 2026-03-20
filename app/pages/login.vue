@@ -1,5 +1,9 @@
 <script setup lang="ts">
-const { loggedIn } = useUserSession()
+const { loggedIn, refreshing, initialized, ensureInitialized } = useAuth()
+
+if (!initialized.value) {
+  await ensureInitialized()
+}
 
 if (loggedIn.value) {
   await navigateTo('/')
@@ -7,11 +11,17 @@ if (loggedIn.value) {
 
 const route = useRoute()
 const error = computed(() => route.query.error as string | undefined)
+
+const signIn = () => { window.location.href = '/api/auth/google' }
 </script>
 
 <template>
   <div class="flex min-h-screen items-center justify-center">
-    <div class="flex flex-col items-center gap-6 w-full max-w-sm px-4">
+    <div v-if="!initialized || refreshing" class="flex items-center gap-2 text-sm text-muted">
+      <UIcon name="i-lucide-loader-circle" class="w-4 h-4 animate-spin" />
+      <span>Checking session…</span>
+    </div>
+    <div v-else class="flex flex-col items-center gap-6 w-full max-w-sm px-4">
       <h1 class="text-2xl font-bold text-highlighted">
         Meizuno AI Chat
       </h1>
@@ -34,7 +44,7 @@ const error = computed(() => route.query.error as string | undefined)
         label="Sign in with Google"
         size="lg"
         block
-        @click="navigateTo('/auth/google', { external: true })"
+        @click="signIn"
       />
     </div>
   </div>

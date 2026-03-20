@@ -22,3 +22,9 @@ logs
 .env
 .env.*
 !.env.example
+
+# SQLite databases
+prisma/*.db
+prisma/*.db-journal
+prisma/*.db-shm
+prisma/*.db-wal

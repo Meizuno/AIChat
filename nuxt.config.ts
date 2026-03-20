@@ -3,7 +3,6 @@ export default defineNuxtConfig({
   modules: [
     '@nuxt/eslint',
     '@nuxt/ui',
-    'nuxt-auth-utils',
     '@nuxtjs/mdc'
   ],
 
@@ -15,7 +14,19 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     openaiApiKey: '',
-    allowedEmails: ''
+    auth: {
+      jwtSecret: '',
+      accessTokenTTL: '900',
+      refreshTokenTTL: '2592000',
+      allowedEmails: ''
+    },
+    oauth: {
+      google: {
+        clientId: '',
+        clientSecret: '',
+        redirectURL: ''
+      }
+    }
   },
 
   mdc: {

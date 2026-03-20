@@ -1,13 +1,33 @@
 <script setup lang="ts">
-import { isTextUIPart } from 'ai'
+import { isTextUIPart, isToolUIPart } from 'ai'
 import { Chat } from '@ai-sdk/vue'
 
-const { user, clear } = useUserSession()
+const { user, logout } = useAuth()
 const input = ref('')
 const temporaryChat = ref(false)
 
 const sidebarOpen = ref(true)
 const windowWidth = ref(0)
+const MCP_DISPLAY_NAME = 'Money Manager'
+
+type McpStatus = { connected: boolean, toolCount: number, tools: string[] }
+const mcpStatus = ref<McpStatus | null>(null)
+
+const fetchMcpStatus = async () => {
+  const { apiFetch } = useAuth()
+  try {
+    mcpStatus.value = await apiFetch<McpStatus>('/api/mcp-status')
+  }
+  catch {
+    mcpStatus.value = { connected: false, toolCount: 0, tools: [] }
+  }
+}
+
+onMounted(() => {
+  fetchMcpStatus()
+  const interval = setInterval(fetchMcpStatus, 30_000)
+  onUnmounted(() => clearInterval(interval))
+})
 
 onMounted(() => {
   windowWidth.value = window.innerWidth
@@ -19,6 +39,7 @@ onMounted(() => {
 })
 
 const usage = ref<{ inputTokens: number, outputTokens: number, totalTokens: number } | null>(null)
+const copiedMessageId = ref<string | null>(null)
 
 const PRICE_INPUT = 2.50
 const PRICE_OUTPUT = 10.00
@@ -30,8 +51,8 @@ const estimatedCost = computed(() => {
   return cost < 0.01 ? '< $0.01' : `$${cost.toFixed(4)}`
 })
 
-async function logout() {
-  await clear()
+async function handleLogout() {
+  await logout()
   await navigateTo('/login')
 }
 
@@ -56,6 +77,40 @@ watch(temporaryChat, (enabled) => {
 function onSubmit() {
   chat.sendMessage({ text: input.value })
   input.value = ''
+}
+
+function getMessageText(message: { parts?: unknown[] }) {
+  if (!message.parts) return ''
+  return message.parts
+    .filter(part => isTextUIPart(part))
+    .map(part => part.text)
+    .join('\n\n')
+    .trim()
+}
+
+async function copyMessage(message: { id: string, parts?: unknown[] }) {
+  const text = getMessageText(message)
+  if (!text) return
+  await navigator.clipboard.writeText(text)
+  copiedMessageId.value = message.id
+  setTimeout(() => {
+    if (copiedMessageId.value === message.id) copiedMessageId.value = null
+  }, 1500)
+}
+
+function canShowCopy(message: { id: string, role: string, parts?: unknown[] }) {
+  const lastMessage = chat.messages[chat.messages.length - 1]
+  const isLatestAssistant = message.role === 'assistant' && lastMessage?.id === message.id
+  const isGenerating = chat.status === 'submitted' || chat.status === 'streaming'
+  if (isLatestAssistant && isGenerating) return false
+  return !!getMessageText(message)
+}
+
+function isAssistantThinking(message: { id: string, role: string }) {
+  const lastMessage = chat.messages[chat.messages.length - 1]
+  const isLatestAssistant = message.role === 'assistant' && lastMessage?.id === message.id
+  const isGenerating = chat.status === 'submitted' || chat.status === 'streaming'
+  return isLatestAssistant && isGenerating
 }
 </script>
 
@@ -84,13 +139,42 @@ function onSubmit() {
 
         <div class="flex-1" />
 
-        <div class="flex items-center gap-3 px-4 py-3">
+        <!-- MCP Status -->
+        <div class="px-4 py-3 border-t border-default">
+          <UTooltip
+            :text="mcpStatus?.connected ? `${mcpStatus.toolCount} tool${mcpStatus.toolCount === 1 ? '' : 's'}: ${mcpStatus.tools.join(', ')}` : 'Money Manager server unreachable'"
+            :delay-duration="200"
+          >
+            <div class="flex items-center gap-2 cursor-default">
+              <span
+                class="w-2 h-2 rounded-full shrink-0"
+                :class="mcpStatus === null ? 'bg-muted animate-pulse' : mcpStatus.connected ? 'bg-green-500' : 'bg-red-500'"
+              />
+              <span class="text-xs text-muted">
+                <template v-if="mcpStatus === null">Checking Money Manager…</template>
+                <template v-else-if="mcpStatus.connected">Money Manager</template>
+                <template v-else>Money Manager disconnected</template>
+              </span>
+              <UButton
+                icon="i-lucide-refresh-cw"
+                variant="ghost"
+                color="neutral"
+                size="xs"
+                class="ml-auto"
+                :loading="mcpStatus === null"
+                @click="fetchMcpStatus"
+              />
+            </div>
+          </UTooltip>
+        </div>
+
+        <div class="flex items-center gap-3 px-4 py-3 border-t border-default">
           <UAvatar :src="user?.avatar" :alt="user?.name" size="sm" />
           <div class="flex-1 min-w-0">
             <p class="text-sm font-medium truncate">{{ user?.name }}</p>
             <p class="text-xs text-muted truncate">{{ user?.email }}</p>
           </div>
-          <UButton icon="i-lucide-log-out" variant="ghost" color="neutral" size="sm" @click="logout" />
+          <UButton icon="i-lucide-log-out" variant="ghost" color="neutral" size="sm" @click="handleLogout" />
         </div>
       </div>
     </Transition>
@@ -125,7 +209,12 @@ function onSubmit() {
       </Transition>
 
       <div class="flex-1 overflow-y-auto pt-4">
-        <UChatMessages :messages="chat.messages" :status="chat.status">
+        <UChatMessages
+          :messages="chat.messages"
+          :status="chat.status"
+          :user="{ ui: { actions: '!opacity-100' } }"
+          :assistant="{ ui: { actions: '!opacity-100' } }"
+        >
           <template #content="{ message }">
             <template
               v-for="(part, index) in message.parts"
@@ -138,6 +227,33 @@ function onSubmit() {
                 class="*:first:mt-0 *:last:mb-0"
               />
             </template>
+          </template>
+          <template #actions="{ message }">
+            <div class="flex items-center gap-2">
+              <div
+                v-if="isAssistantThinking(message)"
+                class="flex items-center gap-1 text-xs text-muted"
+              >
+                <UIcon name="i-lucide-loader-circle" class="w-3.5 h-3.5 animate-spin" />
+                <span>AI is thinking…</span>
+              </div>
+              <UBadge
+                v-else-if="message.role === 'assistant' && message.parts.some(p => isToolUIPart(p))"
+                :label="MCP_DISPLAY_NAME"
+                color="success"
+                variant="subtle"
+                size="sm"
+              />
+              <UButton
+                v-if="canShowCopy(message)"
+                :icon="copiedMessageId === message.id ? 'i-lucide-check' : 'i-lucide-copy'"
+                variant="ghost"
+                color="neutral"
+                size="xs"
+                :aria-label="copiedMessageId === message.id ? 'Copied' : 'Copy message'"
+                @click="copyMessage(message)"
+              />
+            </div>
           </template>
         </UChatMessages>
       </div>
