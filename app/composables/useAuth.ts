@@ -7,35 +7,19 @@ export type AuthUser = {
 
 export const useAuth = () => {
   const user = useState<AuthUser | null>('auth_user', () => null)
-  const initialized = useState<boolean>('auth_initialized', () => false)
-  const initPromise = useState<Promise<boolean> | null>('auth_init_promise', () => null)
-
   const loggedIn = computed(() => Boolean(user.value))
 
-  const fetchMe = async () => {
+  const refresh = async (): Promise<boolean> => {
     try {
       const headers = import.meta.server ? useRequestHeaders(['cookie']) : undefined
-      const result = await $fetch<{ user: AuthUser | null }>('/api/auth/me', { headers })
-      user.value = result.user
-      return Boolean(result.user)
+      const data = await $fetch<{ user: AuthUser }>('/api/auth/me', { headers })
+      user.value = data.user
+      return true
     }
     catch {
       user.value = null
       return false
     }
-  }
-
-  const ensureInitialized = async () => {
-    if (initialized.value) return loggedIn.value
-    if (!initPromise.value) {
-      initPromise.value = fetchMe().then(ok => {
-        initialized.value = true
-        return ok
-      }).finally(() => {
-        initPromise.value = null
-      })
-    }
-    return await initPromise.value
   }
 
   const logout = async () => {
@@ -44,8 +28,22 @@ export const useAuth = () => {
     }
     catch {}
     user.value = null
-    initialized.value = true
+    await navigateTo('/login')
   }
 
-  return { user, loggedIn, initialized, fetchMe, ensureInitialized, logout }
+  const apiFetch = async <T>(url: string, options: Parameters<typeof $fetch>[1] = {}) => {
+    try {
+      return await $fetch<T>(url, options)
+    }
+    catch (error: unknown) {
+      const status = (error as { statusCode?: number })?.statusCode ?? 0
+      if (status === 401) {
+        user.value = null
+        await navigateTo('/login')
+      }
+      throw error
+    }
+  }
+
+  return { user, loggedIn, refresh, logout, apiFetch }
 }

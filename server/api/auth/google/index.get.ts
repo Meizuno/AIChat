@@ -1,26 +1,9 @@
-import { createError, sendRedirect, setCookie } from 'h3'
+import { sendRedirect, getHeader } from 'h3'
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler((event) => {
   const config = useRuntimeConfig()
-  const clientId = config.oauth?.google?.clientId as string | undefined
-  const redirectURL = config.oauth?.google?.redirectURL as string | undefined
-
-  if (!clientId || !redirectURL) {
-    throw createError({ statusCode: 500, statusMessage: 'Google OAuth is not configured.' })
-  }
-
-  const state = crypto.randomUUID()
-  setCookie(event, 'oauth_state', state, { httpOnly: true, sameSite: 'lax', maxAge: 300 })
-
-  const params = new URLSearchParams({
-    client_id: clientId,
-    redirect_uri: redirectURL,
-    response_type: 'code',
-    scope: 'openid email profile',
-    access_type: 'offline',
-    prompt: 'consent',
-    state
-  })
-
-  return sendRedirect(event, `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`)
+  const host = getHeader(event, 'host') ?? 'localhost:3000'
+  const proto = process.env.NODE_ENV === 'production' ? 'https' : 'http'
+  const callbackUrl = encodeURIComponent(`${proto}://${host}/api/auth/callback`)
+  return sendRedirect(event, `${config.authServiceUrl}/auth/google?redirect_url=${callbackUrl}`)
 })

@@ -1,6 +1,5 @@
 import { getCookie, setCookie, deleteCookie, createError } from 'h3'
 import type { H3Event } from 'h3'
-import { verifyAccessToken } from './jwt'
 
 export type AuthUser = {
   id: string
@@ -9,49 +8,46 @@ export type AuthUser = {
   picture?: string | null
 }
 
-const isSecure = () => (process.env.NODE_ENV ?? 'development') === 'production'
+const isSecure = () => process.env.NODE_ENV === 'production'
 
-export const getAccessTokenFromCookie = (event: H3Event) => getCookie(event, 'aic_access') ?? null
-
-export const getRefreshTokenFromRequest = (event: H3Event) => getCookie(event, 'aic_refresh') ?? null
-
-export const setAccessCookie = (event: H3Event, accessToken: string, accessTTL: number) => {
-  setCookie(event, 'aic_access', accessToken, {
-    httpOnly: true, sameSite: 'lax', secure: isSecure(), path: '/', maxAge: accessTTL
-  })
-}
-
-export const setRefreshCookie = (event: H3Event, refreshToken: string, refreshTTL: number) => {
-  setCookie(event, 'aic_refresh', refreshToken, {
-    httpOnly: true, sameSite: 'lax', secure: isSecure(), path: '/', maxAge: refreshTTL
-  })
-}
-
-export const clearAuthCookies = (event: H3Event) => {
-  deleteCookie(event, 'aic_access', { path: '/' })
-  deleteCookie(event, 'aic_refresh', { path: '/' })
-}
-
-export const getAuthUser = async (event: H3Event): Promise<AuthUser | null> => {
-  if (event.context.user) return event.context.user as AuthUser
-  const token = getAccessTokenFromCookie(event)
-  if (!token) return null
+export const verifyAccessToken = async (token: string): Promise<AuthUser | null> => {
   try {
-    const payload = await verifyAccessToken(token)
-    return {
-      id: payload.sub as string,
-      email: (payload.email as string | undefined) ?? null,
-      name: (payload.name as string | undefined) ?? null,
-      picture: (payload.picture as string | undefined) ?? null
-    }
+    const config = useRuntimeConfig()
+    const result = await $fetch<{ user_id: string }>(`${config.authServiceUrl}/auth/validate`, {
+      headers: { authorization: `Bearer ${token}` }
+    })
+    if (!result.user_id) return null
+    return { id: result.user_id }
   }
   catch {
     return null
   }
 }
 
-export const requireAuthUser = async (event: H3Event) => {
+export const getAuthUser = async (event: H3Event): Promise<AuthUser | null> => {
+  if (event.context.user) return event.context.user as AuthUser
+  const token = getCookie(event, 'aic_access') ?? null
+  if (!token) return null
+  return verifyAccessToken(token)
+}
+
+export const requireAuthUser = async (event: H3Event): Promise<AuthUser> => {
   const user = await getAuthUser(event)
   if (!user) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
   return user
+}
+
+export const setAuthCookies = (event: H3Event, accessToken: string, refreshToken: string) => {
+  const secure = isSecure()
+  setCookie(event, 'aic_access', accessToken, {
+    httpOnly: true, sameSite: 'lax', secure, path: '/'
+  })
+  setCookie(event, 'aic_refresh', refreshToken, {
+    httpOnly: true, sameSite: 'lax', secure, path: '/', maxAge: 60 * 60 * 24 * 7
+  })
+}
+
+export const clearAuthCookies = (event: H3Event) => {
+  deleteCookie(event, 'aic_access', { path: '/' })
+  deleteCookie(event, 'aic_refresh', { path: '/' })
 }

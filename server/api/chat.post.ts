@@ -42,8 +42,9 @@ export default defineEventHandler(async (event) => {
   await requireAuthUser(event)
 
   const { messages } = await readBody(event)
-  const { openaiApiKey, mcpUrl, mcpApiKey } = useRuntimeConfig(event)
+  const { openaiApiKey, mcpUrl } = useRuntimeConfig(event)
   const openai = createOpenAI({ apiKey: openaiApiKey })
+  const mcpToken = event.context.accessToken as string | undefined
 
   let mcpClient: Client | null = null
   let tools = {}
@@ -51,7 +52,7 @@ export default defineEventHandler(async (event) => {
   try {
     mcpClient = new Client({ name: 'ai-chat', version: '1.0.0' })
     await mcpClient.connect(new StreamableHTTPClientTransport(new URL(mcpUrl), {
-      requestInit: { headers: { authorization: `Bearer ${mcpApiKey}` } }
+      requestInit: { headers: { authorization: `Bearer ${mcpToken}` } }
     }))
     tools = await getMcpTools(mcpClient)
     console.log('[MCP] Connected, tools:', Object.keys(tools))

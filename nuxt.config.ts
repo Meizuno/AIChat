@@ -15,20 +15,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     openaiApiKey: '',
     mcpUrl: '',
-    mcpApiKey: '',
-    auth: {
-      jwtSecret: '',
-      accessTokenTTL: '900',
-      refreshTokenTTL: '2592000',
-      allowedEmails: ''
-    },
-    oauth: {
-      google: {
-        clientId: '',
-        clientSecret: '',
-        redirectURL: ''
-      }
-    }
+    authServiceUrl: ''
   },
 
   mdc: {

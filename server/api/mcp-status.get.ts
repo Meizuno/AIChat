@@ -5,12 +5,13 @@ import { requireAuthUser } from '../utils/auth'
 
 export default defineEventHandler(async (event) => {
   await requireAuthUser(event)
-  const { mcpUrl, mcpApiKey } = useRuntimeConfig(event)
+  const { mcpUrl } = useRuntimeConfig(event)
+  const mcpToken = event.context.accessToken as string | undefined
 
   try {
     const client = new Client({ name: 'ai-chat-status', version: '1.0.0' })
     await client.connect(new StreamableHTTPClientTransport(new URL(mcpUrl), {
-      requestInit: { headers: { authorization: `Bearer ${mcpApiKey}` } }
+      requestInit: { headers: { authorization: `Bearer ${mcpToken}` } }
     }))
     const { tools } = await client.listTools()
     await client.close()
