@@ -6,7 +6,7 @@
     "build": "nuxt build",
     "dev": "nuxt dev",
     "preview": "nuxt preview",
-    "postinstall": "prisma generate && nuxt prepare",
+    "postinstall": "nuxt prepare",
     "lint": "eslint .",
     "typecheck": "nuxt typecheck"
   },
@@ -18,7 +18,6 @@
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@nuxt/ui": "^4.5.1",
     "@nuxtjs/mdc": "^0.20.2",
-    "@prisma/client": "^6.19.2",
     "ai": "^6.0.116",
     "jose": "^6.2.2",
     "nuxt": "^4.4.2",
@@ -28,7 +27,6 @@
   "devDependencies": {
     "@nuxt/eslint": "^1.15.2",
     "eslint": "^10.0.3",
-    "prisma": "^6.19.2",
     "typescript": "^5.9.3",
     "vue-tsc": "^3.2.5"
   },

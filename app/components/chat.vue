@@ -14,9 +14,8 @@ type McpStatus = { connected: boolean, toolCount: number, tools: string[] }
 const mcpStatus = ref<McpStatus | null>(null)
 
 const fetchMcpStatus = async () => {
-  const { apiFetch } = useAuth()
   try {
-    mcpStatus.value = await apiFetch<McpStatus>('/api/mcp-status')
+    mcpStatus.value = await $fetch<McpStatus>('/api/mcp-status')
   }
   catch {
     mcpStatus.value = { connected: false, toolCount: 0, tools: [] }

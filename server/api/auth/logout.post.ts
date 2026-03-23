@@ -1,13 +1,9 @@
-import { getCookie } from 'h3'
-import { getPrisma } from '../../utils/db'
-import { clearAuthCookies } from '../../utils/auth'
+import { clearAuthCookies, getRefreshTokenFromRequest } from '../../utils/auth'
+import { revokeRefreshSession } from '../../utils/refresh-memory'
 
 export default defineEventHandler(async (event) => {
-  const refreshToken = getCookie(event, 'aic_refresh')
-  if (refreshToken) {
-    const prisma = getPrisma()
-    await prisma.refreshToken.deleteMany({ where: { token: refreshToken } })
-  }
+  const refreshToken = getRefreshTokenFromRequest(event)
+  if (refreshToken) revokeRefreshSession(refreshToken)
   clearAuthCookies(event)
   return { ok: true }
 })

@@ -2,9 +2,8 @@ import { streamText, convertToModelMessages, createUIMessageStream, createUIMess
 import { createOpenAI } from '@ai-sdk/openai'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import { requireAuthUser, getAccessTokenFromRequest } from '../utils/auth'
+import { requireAuthUser } from '../utils/auth'
 
-const MCP_URL = 'http://localhost:3001/api/mcp'
 
 async function getMcpTools(client: Client) {
   const { tools: mcpTools } = await client.listTools()
@@ -43,17 +42,16 @@ export default defineEventHandler(async (event) => {
   await requireAuthUser(event)
 
   const { messages } = await readBody(event)
-  const { openaiApiKey } = useRuntimeConfig(event)
+  const { openaiApiKey, mcpUrl, mcpApiKey } = useRuntimeConfig(event)
   const openai = createOpenAI({ apiKey: openaiApiKey })
-  const token = getAccessTokenFromRequest(event)
 
   let mcpClient: Client | null = null
   let tools = {}
 
   try {
     mcpClient = new Client({ name: 'ai-chat', version: '1.0.0' })
-    await mcpClient.connect(new StreamableHTTPClientTransport(new URL(MCP_URL), {
-      requestInit: { headers: { authorization: `Bearer ${token}` } }
+    await mcpClient.connect(new StreamableHTTPClientTransport(new URL(mcpUrl), {
+      requestInit: { headers: { authorization: `Bearer ${mcpApiKey}` } }
     }))
     tools = await getMcpTools(mcpClient)
     console.log('[MCP] Connected, tools:', Object.keys(tools))

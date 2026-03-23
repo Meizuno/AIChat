@@ -1,4 +1,4 @@
-import { getCookie, getHeader, setCookie, createError } from 'h3'
+import { getCookie, setCookie, deleteCookie, createError } from 'h3'
 import type { H3Event } from 'h3'
 import { verifyAccessToken } from './jwt'
 
@@ -9,16 +9,32 @@ export type AuthUser = {
   picture?: string | null
 }
 
-export const getAccessTokenFromRequest = (event: H3Event) => {
-  const header = getHeader(event, 'authorization')
-  if (header?.toLowerCase().startsWith('bearer ')) {
-    return header.slice(7).trim()
-  }
-  return getCookie(event, 'aic_access') ?? null
+const isSecure = () => (process.env.NODE_ENV ?? 'development') === 'production'
+
+export const getAccessTokenFromCookie = (event: H3Event) => getCookie(event, 'aic_access') ?? null
+
+export const getRefreshTokenFromRequest = (event: H3Event) => getCookie(event, 'aic_refresh') ?? null
+
+export const setAccessCookie = (event: H3Event, accessToken: string, accessTTL: number) => {
+  setCookie(event, 'aic_access', accessToken, {
+    httpOnly: true, sameSite: 'lax', secure: isSecure(), path: '/', maxAge: accessTTL
+  })
+}
+
+export const setRefreshCookie = (event: H3Event, refreshToken: string, refreshTTL: number) => {
+  setCookie(event, 'aic_refresh', refreshToken, {
+    httpOnly: true, sameSite: 'lax', secure: isSecure(), path: '/', maxAge: refreshTTL
+  })
+}
+
+export const clearAuthCookies = (event: H3Event) => {
+  deleteCookie(event, 'aic_access', { path: '/' })
+  deleteCookie(event, 'aic_refresh', { path: '/' })
 }
 
 export const getAuthUser = async (event: H3Event): Promise<AuthUser | null> => {
-  const token = getAccessTokenFromRequest(event)
+  if (event.context.user) return event.context.user as AuthUser
+  const token = getAccessTokenFromCookie(event)
   if (!token) return null
   try {
     const payload = await verifyAccessToken(token)
@@ -38,25 +54,4 @@ export const requireAuthUser = async (event: H3Event) => {
   const user = await getAuthUser(event)
   if (!user) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
   return user
-}
-
-export const setAuthCookies = (
-  event: H3Event,
-  accessToken: string,
-  refreshToken: string,
-  accessTTL: number,
-  refreshTTL: number
-) => {
-  const isSecure = (process.env.NODE_ENV ?? 'development') === 'production'
-  setCookie(event, 'aic_access', accessToken, {
-    httpOnly: true, sameSite: 'lax', secure: isSecure, path: '/', maxAge: accessTTL
-  })
-  setCookie(event, 'aic_refresh', refreshToken, {
-    httpOnly: true, sameSite: 'lax', secure: isSecure, path: '/', maxAge: refreshTTL
-  })
-}
-
-export const clearAuthCookies = (event: H3Event) => {
-  setCookie(event, 'aic_access', '', { path: '/', maxAge: 0 })
-  setCookie(event, 'aic_refresh', '', { path: '/', maxAge: 0 })
 }

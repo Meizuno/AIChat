@@ -1,7 +1,7 @@
 import { createError, getQuery, sendRedirect, getCookie, deleteCookie } from 'h3'
-import { getPrisma } from '../../../utils/db'
 import { signAccessToken, getAccessTokenTTL, getRefreshTokenTTL } from '../../../utils/jwt'
-import { setAuthCookies } from '../../../utils/auth'
+import { setAccessCookie, setRefreshCookie } from '../../../utils/auth'
+import { createRefreshSession } from '../../../utils/refresh-memory'
 
 type GoogleTokenResponse = {
   access_token: string
@@ -74,28 +74,12 @@ export default defineEventHandler(async (event) => {
     return sendRedirect(event, '/login?error=unauthorized')
   }
 
-  const prisma = getPrisma()
-  await prisma.user.upsert({
-    where: { id: userId },
-    update: { email, name, picture },
-    create: { id: userId, email, name, picture }
-  })
-
   const accessTTL = getAccessTokenTTL()
   const refreshTTL = getRefreshTokenTTL()
-  const accessToken = await signAccessToken({ id: userId, email, name, picture }, accessTTL)
-  const refreshToken = crypto.randomUUID()
-  const refreshId = crypto.randomUUID()
-
-  await prisma.refreshToken.create({
-    data: {
-      id: refreshId,
-      user_id: userId,
-      token: refreshToken,
-      expires_at: new Date(Date.now() + refreshTTL * 1000)
-    }
-  })
-
-  setAuthCookies(event, accessToken, refreshToken, accessTTL, refreshTTL)
+  const user = { id: userId, email, name, picture }
+  const accessToken = await signAccessToken(user, accessTTL)
+  const refreshToken = createRefreshSession(user, refreshTTL)
+  setAccessCookie(event, accessToken, accessTTL)
+  setRefreshCookie(event, refreshToken, refreshTTL)
   return sendRedirect(event, '/')
 })

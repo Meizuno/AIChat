@@ -14,6 +14,8 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     openaiApiKey: '',
+    mcpUrl: '',
+    mcpApiKey: '',
     auth: {
       jwtSecret: '',
       accessTokenTTL: '900',
