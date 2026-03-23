@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
   const token = (event.context.accessToken as string | undefined) ?? getCookie(event, 'aic_access') ?? ''
 
   const profile = await $fetch<{ id: string; email: string; name: string; avatar_url: string }>(
-    `${config.authServiceUrl}/auth/me`,
+    `${config.authServiceUrl}/me`,
     { headers: { authorization: `Bearer ${token}` } }
   )
 
