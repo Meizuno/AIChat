@@ -211,8 +211,8 @@ function isAssistantThinking(message: { id: string, role: string }) {
         <UChatMessages
           :messages="chat.messages"
           :status="chat.status"
-          :user="{ ui: { actions: '!opacity-100' } }"
-          :assistant="{ ui: { actions: '!opacity-100' } }"
+          :user="{ ui: { actions: copiedMessageId ? '!opacity-100' : '' } }"
+          :assistant="{ ui: { actions: copiedMessageId ? '!opacity-100' : '' } }"
         >
           <template #content="{ message }">
             <template
@@ -279,6 +279,10 @@ function isAssistantThinking(message: { id: string, role: string }) {
 </template>
 
 <style scoped>
+button {
+  cursor: pointer;
+}
+
 .sidebar-enter-active,
 .sidebar-leave-active {
   transition: all 0.25s ease;

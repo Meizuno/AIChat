@@ -63,7 +63,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const result = streamText({
-    model: openai('gpt-4o'),
+    model: openai('gpt-5.4-nano'),
     system: 'You are a helpful assistant. Use available tools when user asks for account, transaction, spending, income, or summary data.',
     messages: await convertToModelMessages(messages),
     tools,
