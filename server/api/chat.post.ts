@@ -94,7 +94,14 @@ Rules:
 - Always call the relevant tool before answering any question about accounts, transactions, budgets, spending, income, or summaries.
 - If no tool is relevant or the tool returns no data, respond with: "I don't have that information."
 - Do NOT use general knowledge to answer financial questions — only tool results.
-- For non-financial questions (greetings, how-to, general chat), you may answer normally.`,
+- For non-financial questions (greetings, how-to, general chat), you may answer normally.
+
+Charts:
+- When the response includes statistics, numeric comparisons, or trends, render them as a chart using a fenced code block with the language tag \`chart\`.
+- Use this exact JSON format inside the block:
+  {"title":"Chart title","labels":["A","B","C"],"datasets":[{"label":"Series name","data":[1,2,3]}]}
+- Multiple datasets are allowed for grouped comparisons.
+- Always include a "title" field.`,
     messages: await convertToModelMessages(messages),
     tools,
     stopWhen: stepCountIs(5)

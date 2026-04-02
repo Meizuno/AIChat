@@ -2,6 +2,10 @@
 import { isTextUIPart, isToolUIPart, DefaultChatTransport } from 'ai'
 import { Chat } from '@ai-sdk/vue'
 
+function normalizeMarkdownForMdc(value: string) {
+  return value
+}
+
 const { user, logout } = useAuth()
 const input = ref('')
 const temporaryChat = ref(false)
@@ -309,7 +313,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
               >
                 <MDC
                   v-if="isTextUIPart(part)"
-                  :value="part.text"
+                  :value="normalizeMarkdownForMdc(part.text)"
                   :cache-key="`${message.id}-${index}`"
                   class="*:first:mt-0 *:last:mb-0"
                 />
