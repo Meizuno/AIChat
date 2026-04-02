@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
 
   const formData = new FormData()
   formData.append('file', new Blob([audioPart.data], { type: audioPart.type ?? 'audio/webm' }), 'audio.webm')
-  formData.append('model', 'whisper-1')
+  formData.append('model', 'gpt-4o-mini-transcribe')
   formData.append('prompt', 'Transcribe exactly as spoken. Use only English (en) or Ukrainian (uk). Do not translate.')
 
   const result = await $fetch<{ text: string }>('https://api.openai.com/v1/audio/transcriptions', {
