@@ -9,16 +9,16 @@ const props = defineProps({
   meta: { type: String, default: null },
   class: { type: String, default: null }
 })
-
-const isChartBlock = computed(() => {
-  if (props.language === 'chart') return true
-  return typeof props.meta === 'string' && /\bchart\b/i.test(props.meta)
-})
-
 </script>
 
 <template>
-  <ProseChart v-if="isChartBlock" :code="code" />
-
-  <pre v-else :class="$props.class"><slot /></pre>
+  <ProseChart v-if="language === 'chart'" :code="code" />
+  <div v-else class="group my-4 overflow-hidden rounded-xl border border-slate-200/70 bg-slate-950 shadow-sm dark:border-slate-700/60">
+    <div v-if="filename || language" class="flex items-center justify-between border-b border-slate-700/60 bg-slate-900 px-4 py-2">
+      <span class="font-mono text-xs text-slate-400">{{ filename || language }}</span>
+    </div>
+    <div class="overflow-x-auto">
+      <pre :class="[$props.class, 'p-4 text-sm leading-relaxed']"><slot /></pre>
+    </div>
+  </div>
 </template>

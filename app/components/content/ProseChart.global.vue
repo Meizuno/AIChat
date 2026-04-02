@@ -127,7 +127,13 @@ const chartOptions = computed(() => ({
 
 <template>
   <ClientOnly>
-    <div class="relative my-5 overflow-hidden rounded-2xl border border-slate-200/70 bg-gradient-to-br from-white to-slate-50 p-5 shadow-sm dark:border-slate-700/60 dark:from-slate-900 dark:to-slate-800">
+    <template #fallback>
+      <div class="relative my-5 w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200/70 bg-linear-to-br from-white to-slate-50 p-5 shadow-sm dark:border-slate-700/60 dark:from-slate-900 dark:to-slate-800">
+        <USkeleton class="mb-4 h-4 w-40 rounded" />
+        <USkeleton class="h-80 w-full rounded-xl" />
+      </div>
+    </template>
+    <div class="relative my-5 w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200/70 bg-linear-to-br from-white to-slate-50 p-5 shadow-sm dark:border-slate-700/60 dark:from-slate-900 dark:to-slate-800">
       <div class="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full bg-cyan-400/10 blur-2xl" />
       <div class="pointer-events-none absolute -bottom-16 -left-12 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl" />
       <template v-if="chartData">
@@ -159,7 +165,7 @@ const chartOptions = computed(() => ({
             />
           </div>
         </div>
-        <div class="h-[320px]">
+        <div class="h-80">
           <Bar v-if="activeType === 'bar'" :data="chartData" :options="chartOptions" />
           <Pie v-else :data="chartData" :options="chartOptions" />
         </div>
@@ -185,7 +191,10 @@ const chartOptions = computed(() => ({
           </div>
         </div>
       </template>
-      <p v-else class="text-sm italic text-muted">Invalid chart data</p>
+      <template v-else>
+        <USkeleton class="mb-4 h-4 w-40 rounded" />
+        <USkeleton class="h-80 w-full rounded-xl" />
+      </template>
     </div>
   </ClientOnly>
 </template>

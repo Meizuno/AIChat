@@ -12,6 +12,7 @@ export default defineEventHandler(async (event) => {
   const formData = new FormData()
   formData.append('file', new Blob([audioPart.data], { type: audioPart.type ?? 'audio/webm' }), 'audio.webm')
   formData.append('model', 'whisper-1')
+  formData.append('prompt', 'The audio is in English or Ukrainian.')
 
   const result = await $fetch<{ text: string }>('https://api.openai.com/v1/audio/transcriptions', {
     method: 'POST',

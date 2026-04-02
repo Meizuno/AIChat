@@ -88,20 +88,14 @@ export default defineEventHandler(async (event) => {
 
   const result = streamText({
     model: openai('gpt-5.4-nano'),
-    system: `You are a financial assistant with access to the user's money manager data via tools.
-Rules:
-- ONLY answer questions using data retrieved from the available tools.
-- Always call the relevant tool before answering any question about accounts, transactions, budgets, spending, income, or summaries.
-- If no tool is relevant or the tool returns no data, respond with: "I don't have that information."
-- Do NOT use general knowledge to answer financial questions — only tool results.
-- For non-financial questions (greetings, how-to, general chat), you may answer normally.
+    system: `Financial assistant with tool access. Rules:
+- Use tools for all financial data. No tool result = "I don't have that information."
+- Non-financial questions: answer normally.
 
-Charts:
-- When the response includes statistics, numeric comparisons, or trends, render them as a chart using a fenced code block with the language tag \`chart\`.
-- Use this exact JSON format inside the block:
-  {"title":"Chart title","labels":["A","B","C"],"datasets":[{"label":"Series name","data":[1,2,3]}]}
-- Multiple datasets are allowed for grouped comparisons.
-- Always include a "title" field.`,
+Render formats:
+- Numbers/trends → \`\`\`chart {"title":"...","labels":[...],"datasets":[{"label":"...","data":[...]}]}\`\`\` (add "type":"pie" for pie)
+- Code/queries → fenced block with language tag; short values → inline \`code\`
+- Lists/rankings → use markdown \`-\` or \`1.\` bullets`,
     messages: await convertToModelMessages(messages),
     tools,
     stopWhen: stepCountIs(5)

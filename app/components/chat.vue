@@ -3,6 +3,9 @@ import { isTextUIPart, isToolUIPart, DefaultChatTransport } from 'ai'
 import { Chat } from '@ai-sdk/vue'
 
 function normalizeMarkdownForMdc(value: string) {
+  // Close any unclosed fenced code block so MDC renders it during streaming
+  const fences = (value.match(/^```/gm) || []).length
+  if (fences % 2 !== 0) return value + '\n```'
   return value
 }
 
@@ -187,6 +190,12 @@ function canShowCopy(message: { id: string, role: string, parts?: unknown[] }) {
   return !!getMessageText(message)
 }
 
+function isStreaming(message: { id: string, role: string }) {
+  const lastMessage = chat.messages[chat.messages.length - 1]
+  return message.role === 'assistant' && lastMessage?.id === message.id
+    && (chat.status === 'submitted' || chat.status === 'streaming')
+}
+
 function isAssistantThinking(message: { id: string, role: string }) {
   const lastMessage = chat.messages[chat.messages.length - 1]
   const isLatestAssistant = message.role === 'assistant' && lastMessage?.id === message.id
@@ -199,9 +208,19 @@ function isAssistantThinking(message: { id: string, role: string }) {
   <div class="flex h-screen overflow-hidden">
     <USidebar v-model:open="sidebarOpen" collapsible="offcanvas">
       <template #header>
-        <div class="flex items-center gap-2">
-          <img src="/favicon.svg" class="w-6 h-6" alt="logo">
-          <p class="font-semibold">Meizuno AI</p>
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-2">
+            <img src="/favicon.svg" class="w-6 h-6" alt="logo">
+            <p class="font-semibold">Meizuno AI</p>
+          </div>
+          <UButton
+            icon="i-lucide-x"
+            variant="ghost"
+            color="neutral"
+            size="sm"
+            class="lg:hidden"
+            @click="sidebarOpen = false"
+          />
         </div>
       </template>
 
@@ -226,7 +245,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
       </div>
 
       <template #footer>
-        <div class="flex flex-col gap-3">
+        <div class="w-full flex flex-col gap-3">
           <!-- MCP Servers -->
           <div>
             <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">MCP Servers</p>
@@ -314,7 +333,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
                 <MDC
                   v-if="isTextUIPart(part)"
                   :value="normalizeMarkdownForMdc(part.text)"
-                  :cache-key="`${message.id}-${index}`"
+                  :cache-key="isStreaming(message) ? `${message.id}-${index}-${part.text.length}` : `${message.id}-${index}`"
                   class="*:first:mt-0 *:last:mb-0"
                 />
               </template>
