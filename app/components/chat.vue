@@ -19,12 +19,15 @@ type Conversation = { id: string, title: string | null, updatedAt: string }
 const conversations = ref<Conversation[]>([])
 const currentConversationId = ref<string | null>(null)
 
+const conversationsLoading = ref(true)
+
 const fetchConversations = async () => {
   try {
     const data = await $fetch<{ conversations: Conversation[] }>('/api/conversations')
     conversations.value = data.conversations
   }
   catch { /* ignore */ }
+  finally { conversationsLoading.value = false }
 }
 
 const loadConversation = async (id: string) => {
@@ -51,10 +54,15 @@ const loadConversation = async (id: string) => {
   catch { /* ignore */ }
 }
 
+
 const startNewConversation = () => {
   currentConversationId.value = null
   chat.messages = []
   usage.value = null
+}
+
+const closeSidebarOnMobile = () => {
+  if (import.meta.client && window.innerWidth < 1024) sidebarOpen.value = false
 }
 
 type McpStatus = { connected: boolean, toolCount: number, tools: string[] }
@@ -236,11 +244,14 @@ function isAssistantThinking(message: { id: string, role: string }) {
             :key="conv.id"
             class="w-full text-left px-2 py-2 rounded-md text-sm truncate transition-colors hover:bg-elevated"
             :class="currentConversationId === conv.id ? 'bg-elevated font-medium' : 'text-muted'"
-            @click="loadConversation(conv.id)"
+            @click="loadConversation(conv.id); closeSidebarOnMobile()"
           >
             {{ conv.title || 'New conversation' }}
           </button>
-          <p v-if="conversations.length === 0" class="px-2 py-2 text-xs text-muted">No conversations yet</p>
+          <div v-if="conversationsLoading" class="flex flex-1 items-center justify-center py-8">
+            <UIcon name="i-lucide-loader-2" class="h-5 w-5 animate-spin text-muted" />
+          </div>
+          <p v-else-if="conversations.length === 0" class="px-2 py-2 text-xs text-muted">No conversations yet</p>
         </div>
       </div>
 
