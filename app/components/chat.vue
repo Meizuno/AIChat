@@ -322,7 +322,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
             class="max-w-3xl mx-auto px-4"
             :messages="chat.messages"
             :status="chat.status"
-            :user="{ ui: { actions: copiedMessageId ? '!opacity-100' : '' } }"
+            :user="{ ui: { actions: copiedMessageId ? '!opacity-100' : '', content: 'rounded-full px-4 py-2' } }"
             :assistant="{ ui: { actions: '!opacity-100', root: 'last:h-fit' } }"
           >
             <template #content="{ message }">
@@ -375,14 +375,44 @@ function isAssistantThinking(message: { id: string, role: string }) {
                 <span class="text-highlighted font-medium">{{ estimatedCost }}</span>
               </div>
             </Transition>
-            <UChatPrompt v-model="input" :error="chat.error" @submit="onSubmit">
+            <!-- Recording / transcribing state -->
+            <Transition name="recording">
+              <div
+                v-if="isRecording || isTranscribing"
+                class="flex items-center gap-3 rounded-full border border-default bg-default px-4 py-2.5"
+              >
+                <div class="flex items-center gap-1.5 flex-1">
+                  <template v-if="isRecording">
+                    <span class="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                    <span class="text-sm text-muted">Recording…</span>
+                    <div class="flex items-end gap-0.5 ml-1">
+                      <span v-for="i in 4" :key="i" class="w-0.5 rounded-full bg-red-400 animate-pulse" :style="{ height: `${8 + (i % 3) * 4}px`, animationDelay: `${i * 0.15}s` }" />
+                    </div>
+                  </template>
+                  <template v-else>
+                    <UIcon name="i-lucide-loader-2" class="h-4 w-4 animate-spin text-primary" />
+                    <span class="text-sm text-muted">Transcribing…</span>
+                  </template>
+                </div>
+                <UButton
+                  v-if="isRecording"
+                  icon="i-lucide-square"
+                  color="error"
+                  variant="solid"
+                  size="sm"
+                  class="rounded-full"
+                  @click="toggleRecording"
+                />
+              </div>
+            </Transition>
+
+            <UChatPrompt v-if="!isRecording && !isTranscribing" v-model="input" :error="chat.error" :ui="{ root: 'rounded-full' }" @submit="onSubmit">
               <UButton
-                :icon="chat.status === 'streaming' || chat.status === 'submitted' ? 'i-lucide-square' : input.trim() ? 'i-lucide-arrow-up' : isRecording ? 'i-lucide-square' : 'i-lucide-mic'"
-                :color="isRecording ? 'error' : 'primary'"
+                :icon="chat.status === 'streaming' || chat.status === 'submitted' ? 'i-lucide-square' : input.trim() ? 'i-lucide-arrow-up' : 'i-lucide-mic'"
+                :color="'primary'"
                 variant="solid"
                 size="sm"
-                :loading="isTranscribing"
-                :class="['rounded-full', isRecording ? 'animate-pulse' : '']"
+                class="rounded-full"
                 @click="chat.status === 'streaming' || chat.status === 'submitted' ? chat.stop() : input.trim() ? onSubmit() : toggleRecording()"
               />
             </UChatPrompt>
@@ -396,6 +426,16 @@ function isAssistantThinking(message: { id: string, role: string }) {
 <style scoped>
 button {
   cursor: pointer;
+}
+
+.recording-enter-active,
+.recording-leave-active {
+  transition: all 0.2s ease;
+}
+.recording-enter-from,
+.recording-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
 }
 
 .banner-enter-active,
