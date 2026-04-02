@@ -214,7 +214,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
 
 <template>
   <div class="flex h-screen overflow-hidden">
-    <USidebar v-model:open="sidebarOpen" collapsible="offcanvas">
+    <USidebar v-model:open="sidebarOpen" collapsible="offcanvas" :ui="{ inner: 'pb-4' }">
       <template #header>
         <div class="flex items-center justify-between w-full">
           <div class="flex items-center gap-2">
@@ -377,7 +377,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
           </UChatMessages>
         </div>
 
-        <div class="p-4 shrink-0">
+        <div class="p-8 shrink-0">
           <div class="max-w-3xl mx-auto relative">
             <Transition name="usage">
               <div v-if="usage" class="absolute -top-6 right-1 flex items-center gap-3 text-xs text-muted">
