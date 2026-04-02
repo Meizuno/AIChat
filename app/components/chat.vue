@@ -417,7 +417,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
               </div>
             </Transition>
 
-            <UChatPrompt v-if="!isRecording && !isTranscribing" v-model="input" :error="chat.error" :ui="{ root: 'rounded-full' }" @submit="onSubmit">
+            <UChatPrompt v-if="!isRecording && !isTranscribing" v-model="input" :error="chat.error" :ui="{ root: 'bg-elevated/50 rounded-4xl [&>div]:items-center' }" @submit="onSubmit">
               <UButton
                 :icon="chat.status === 'streaming' || chat.status === 'submitted' ? 'i-lucide-square' : input.trim() ? 'i-lucide-arrow-up' : 'i-lucide-mic'"
                 :color="'primary'"
