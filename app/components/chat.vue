@@ -39,6 +39,36 @@ onMounted(() => {
 
 const usage = ref<{ inputTokens: number, outputTokens: number, totalTokens: number } | null>(null)
 const copiedMessageId = ref<string | null>(null)
+const isRecording = ref(false)
+const isTranscribing = ref(false)
+let mediaRecorder: MediaRecorder | null = null
+let audioChunks: Blob[] = []
+
+async function toggleRecording() {
+  if (isRecording.value) {
+    mediaRecorder?.stop()
+    isRecording.value = false
+    return
+  }
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+  audioChunks = []
+  mediaRecorder = new MediaRecorder(stream)
+  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data) }
+  mediaRecorder.onstop = async () => {
+    stream.getTracks().forEach(t => t.stop())
+    isTranscribing.value = true
+    try {
+      const formData = new FormData()
+      formData.append('audio', new Blob(audioChunks, { type: 'audio/webm' }), 'audio.webm')
+      const result = await $fetch<{ text: string }>('/api/transcribe', { method: 'POST', body: formData })
+      input.value = result.text
+    }
+    catch { /* ignore */ }
+    finally { isTranscribing.value = false }
+  }
+  mediaRecorder.start()
+  isRecording.value = true
+}
 
 const PRICE_INPUT = 2.50
 const PRICE_OUTPUT = 10.00
@@ -180,7 +210,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
 
     <!-- Chat area -->
     <div class="flex flex-col flex-1 min-w-0">
-      <div class="flex items-center justify-between px-4 py-3 border-b border-default shrink-0">
+      <div class="flex items-center justify-between px-4 py-3 shrink-0">
         <div class="flex items-center gap-3">
           <UButton
             :icon="sidebarOpen ? 'i-lucide-panel-left-close' : 'i-lucide-panel-left-open'"
@@ -189,7 +219,6 @@ function isAssistantThinking(message: { id: string, role: string }) {
             size="sm"
             @click="sidebarOpen = !sidebarOpen"
           />
-          <p class="font-semibold">Meizuno AI Chat</p>
         </div>
         <div class="flex items-center gap-2">
           <UTooltip text="Messages won't be saved and history will be cleared when you turn this off">
@@ -209,10 +238,11 @@ function isAssistantThinking(message: { id: string, role: string }) {
 
       <div class="flex-1 overflow-y-auto pt-4">
         <UChatMessages
+          class="max-w-3xl mx-auto px-4"
           :messages="chat.messages"
           :status="chat.status"
           :user="{ ui: { actions: copiedMessageId ? '!opacity-100' : '' } }"
-          :assistant="{ ui: { actions: copiedMessageId ? '!opacity-100' : '' } }"
+          :assistant="{ ui: { actions: '!opacity-100', root: 'last:h-fit' } }"
         >
           <template #content="{ message }">
             <template
@@ -258,21 +288,26 @@ function isAssistantThinking(message: { id: string, role: string }) {
       </div>
 
       <div class="p-4 shrink-0">
-        <UChatPrompt v-model="input" :error="chat.error" @submit="onSubmit">
-          <UChatPromptSubmit
-            :status="chat.status"
-            @stop="chat.stop()"
-            @reload="chat.regenerate()"
-          />
-        </UChatPrompt>
-
-        <Transition name="usage">
-          <div v-if="usage" class="flex items-center gap-3 mt-2 px-1 text-xs text-muted">
-            <span>↑ {{ usage.inputTokens?.toLocaleString() }} tokens</span>
-            <span>↓ {{ usage.outputTokens?.toLocaleString() }} tokens</span>
-            <span class="text-highlighted font-medium">{{ estimatedCost }}</span>
-          </div>
-        </Transition>
+        <div class="max-w-3xl mx-auto relative">
+          <Transition name="usage">
+            <div v-if="usage" class="absolute -top-6 right-1 flex items-center gap-3 text-xs text-muted">
+              <span>↑ {{ usage.inputTokens?.toLocaleString() }}</span>
+              <span>↓ {{ usage.outputTokens?.toLocaleString() }}</span>
+              <span class="text-highlighted font-medium">{{ estimatedCost }}</span>
+            </div>
+          </Transition>
+          <UChatPrompt v-model="input" :error="chat.error" @submit="onSubmit">
+            <UButton
+              :icon="chat.status === 'streaming' || chat.status === 'submitted' ? 'i-lucide-square' : input.trim() ? 'i-lucide-arrow-up' : isRecording ? 'i-lucide-square' : 'i-lucide-mic'"
+              :color="isRecording ? 'error' : 'primary'"
+              variant="solid"
+              size="sm"
+              :loading="isTranscribing"
+              :class="['rounded-full', isRecording ? 'animate-pulse' : '']"
+              @click="chat.status === 'streaming' || chat.status === 'submitted' ? chat.stop() : input.trim() ? onSubmit() : toggleRecording()"
+            />
+          </UChatPrompt>
+        </div>
       </div>
     </div>
   </div>
