@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
   const formData = new FormData()
   formData.append('file', new Blob([audioPart.data], { type: audioPart.type ?? 'audio/webm' }), 'audio.webm')
   formData.append('model', 'whisper-1')
-  formData.append('prompt', 'Transcribe exactly as spoken. If the language is Slavic, it is Ukrainian (uk), not Russian. Do not translate.')
+  formData.append('prompt', 'Transcribe exactly as spoken. Use only English (en) or Ukrainian (uk). Do not translate.')
 
   const result = await $fetch<{ text: string }>('https://api.openai.com/v1/audio/transcriptions', {
     method: 'POST',
