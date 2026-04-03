@@ -88,12 +88,17 @@ export default defineEventHandler(async (event) => {
 
   const result = streamText({
     model: openai('gpt-5.4-nano'),
-    system: `Financial assistant with tool access. Rules:
+    system: `Today's date: ${new Date().toISOString().slice(0, 10)}.
+Financial assistant with tool access. Rules:
 - Use tools for all financial data. No tool result = "I don't have that information."
 - Non-financial questions: answer normally.
+- Show statistics only for CZK amounts. Ignore or skip records in other currencies unless the user explicitly asks about them.
 
 Render formats:
-- Numbers/trends → \`\`\`chart {"title":"...","labels":[...],"datasets":[{"label":"...","data":[...]}]}\`\`\` (add "type":"pie" for pie)
+- Numbers/trends → fenced chart block with JSON on its own line (default type is pie, add "type":"bar" for bar):
+\`\`\`chart
+{"title":"...","labels":[...],"datasets":[{"label":"...","data":[...]}]}
+\`\`\`
 - Code/queries → fenced block with language tag; short values → inline \`code\`
 - Lists/rankings → use markdown \`-\` or \`1.\` bullets`,
     messages: await convertToModelMessages(messages),

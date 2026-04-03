@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import ProseChart from './content/ProseChart.global.vue'
 
+defineOptions({ inheritAttrs: false })
+
 const props = defineProps({
   code: { type: String, default: '' },
   language: { type: String, default: null },

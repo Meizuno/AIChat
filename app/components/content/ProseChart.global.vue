@@ -29,16 +29,16 @@ const props = defineProps({
 
 const parsed = computed(() => {
   try {
-    return JSON.parse(props.code) as ChartPayload
+    return JSON.parse(props.code.trim()) as ChartPayload
   }
   catch {
     return null
   }
 })
 
-const activeType = ref<ChartType>('bar')
+const activeType = ref<ChartType>('pie')
 watch(parsed, (value) => {
-  activeType.value = value?.type === 'pie' ? 'pie' : 'bar'
+  activeType.value = value?.type === 'bar' ? 'bar' : 'pie'
 }, { immediate: true })
 
 const DEFAULT_COLORS = [
@@ -80,8 +80,6 @@ const chartData = computed(() => {
   return { labels: parsed.value.labels, datasets }
 })
 
-const chartReady = ref(false)
-onMounted(() => nextTick(() => { chartReady.value = true }))
 
 const chartOptions = computed(() => ({
   responsive: true,
@@ -140,7 +138,7 @@ const chartOptions = computed(() => ({
     <div class="relative my-5 w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200/70 bg-linear-to-br from-white to-slate-50 p-5 shadow-sm dark:border-slate-700/60 dark:from-slate-900 dark:to-slate-800">
       <div class="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full bg-cyan-400/10 blur-2xl" />
       <div class="pointer-events-none absolute -bottom-16 -left-12 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl" />
-      <template v-if="chartData && chartReady">
+      <template v-if="chartData">
         <div class="mb-4 flex items-start justify-between gap-3">
           <div>
             <p v-if="parsed?.title" class="text-sm font-semibold text-slate-900 dark:text-slate-100">
