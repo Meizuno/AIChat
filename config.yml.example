@@ -1,0 +1,20 @@
+mcpServers:
+  - name: My MCP Server
+    url: https://example.com/api/mcp
+
+systemPrompt: |
+  Today's date: {date}.
+  You are a helpful assistant with tool access.
+
+defaults:
+  currency: USD
+  transactionType: expense
+  language: en
+  botName: My AI
+  welcomeMessage: Hello! How can I help you today?
+
+suggestedPrompts:
+  - label: Ask something
+    prompt: What can you help me with?
+  - label: Show a chart
+    route: /api/prompts/my-chart

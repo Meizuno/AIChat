@@ -38,8 +38,14 @@ export const useAuth = () => {
     catch (error: unknown) {
       const status = (error as { statusCode?: number })?.statusCode ?? 0
       if (status === 401) {
-        user.value = null
-        await navigateTo('/login')
+        try {
+          await $fetch('/api/auth/refresh', { method: 'POST' })
+          return await $fetch<T>(url, options)
+        }
+        catch {
+          user.value = null
+          await navigateTo('/login')
+        }
       }
       throw error
     }

@@ -14,7 +14,6 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     openaiApiKey: '',
-    databaseUrl: '',
     authServiceUrl: ''
   },
 
@@ -39,6 +38,7 @@ export default defineNuxtConfig({
         { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' }
       ],
       meta: [
+        { name: 'mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
         { name: 'apple-mobile-web-app-title', content: 'Meizuno AI' },

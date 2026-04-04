@@ -24,11 +24,40 @@ export const verifyAccessToken = async (token: string): Promise<AuthUser | null>
   }
 }
 
+const tryRefresh = async (event: H3Event): Promise<AuthUser | null> => {
+  const refreshToken = getCookie(event, 'aic_refresh')
+  if (!refreshToken) return null
+  try {
+    const config = useRuntimeConfig()
+    const result = await $fetch<{ access_token: string, refresh_token: string }>(
+      `${config.authServiceUrl}/refresh`,
+      { method: 'POST', headers: { authorization: `Bearer ${refreshToken}` } }
+    )
+    setAuthCookies(event, result.access_token, result.refresh_token)
+    const user = await verifyAccessToken(result.access_token)
+    if (user) {
+      event.context.user = user
+      event.context.accessToken = result.access_token
+    }
+    return user
+  }
+  catch {
+    return null
+  }
+}
+
 export const getAuthUser = async (event: H3Event): Promise<AuthUser | null> => {
   if (event.context.user) return event.context.user as AuthUser
   const token = getCookie(event, 'aic_access') ?? null
-  if (!token) return null
-  return verifyAccessToken(token)
+  if (token) {
+    const user = await verifyAccessToken(token)
+    if (user) {
+      event.context.user = user
+      event.context.accessToken = token
+      return user
+    }
+  }
+  return tryRefresh(event)
 }
 
 export const requireAuthUser = async (event: H3Event): Promise<AuthUser> => {

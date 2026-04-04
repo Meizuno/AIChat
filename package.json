@@ -22,6 +22,7 @@
     "ai": "^6.0.116",
     "chart.js": "^4.5.1",
     "jose": "^6.2.2",
+    "js-yaml": "^4.1.1",
     "nuxt": "^4.4.2",
     "prisma": "^6.19.3",
     "tailwindcss": "^4.2.1",
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.15.2",
+    "@types/js-yaml": "^4.0.9",
     "eslint": "^10.0.3",
     "typescript": "^5.9.3",
     "vue-tsc": "^3.2.5"

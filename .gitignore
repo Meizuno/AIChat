@@ -31,5 +31,6 @@ prisma/*.db-wal
 
 /app/generated/prisma
 
-# MCP servers config (mounted via Docker)
+# Config (mounted via Docker)
 mcp-servers.json
+config.yml
