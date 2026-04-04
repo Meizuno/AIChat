@@ -48,8 +48,12 @@ onMounted(async () => {
   catch { /* ignore */ }
 })
 
+const promptLoading = ref(false)
+
 async function useSuggestedPrompt(item: { label: string, prompt?: string, route?: string }) {
+  if (promptLoading.value || chat.status !== 'ready') return
   if (item.route) {
+    promptLoading.value = true
     const userId = crypto.randomUUID()
     const assistantId = crypto.randomUUID()
 
@@ -71,14 +75,20 @@ async function useSuggestedPrompt(item: { label: string, prompt?: string, route?
 
     try {
       const data = await $fetch<Record<string, unknown>>(item.route)
+      const text = typeof data.text === 'string'
+        ? data.text
+        : '```chart\n' + JSON.stringify(data) + '\n```'
       chat.messages = chat.messages.map(m =>
         m.id === assistantId
-          ? { ...m, parts: [{ type: 'text' as const, text: '```chart\n' + JSON.stringify(data) + '\n```' }] }
+          ? { ...m, parts: [{ type: 'text' as const, text }] }
           : m
       )
     }
     catch {
       chat.messages = chat.messages.filter(m => m.id !== assistantId && m.id !== userId)
+    }
+    finally {
+      promptLoading.value = false
     }
   }
   else if (item.prompt) {
@@ -165,7 +175,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
   const lastMessage = chat.messages[chat.messages.length - 1]
   const isLatestAssistant = message.role === 'assistant' && lastMessage?.id === message.id
   const isGenerating = chat.status === 'submitted' || chat.status === 'streaming'
-  return isLatestAssistant && isGenerating
+  return isLatestAssistant && (isGenerating || promptLoading.value)
 }
 </script>
 
@@ -330,20 +340,31 @@ function isAssistantThinking(message: { id: string, role: string }) {
             v-if="suggestedPrompts.length && chat.status === 'ready' && chat.messages.length > 0"
             class="flex gap-2 mb-3 overflow-x-auto scrollbar-none"
           >
-            <button
-              v-for="item in suggestedPrompts"
-              :key="item.label"
-              class="px-3 py-1.5 rounded-full border border-default text-xs hover:bg-elevated transition-colors cursor-pointer shrink-0"
-              @click="useSuggestedPrompt(item)"
-            >
-              {{ item.label }}
-            </button>
+            <template v-if="promptLoading">
+              <USkeleton
+                v-for="item in suggestedPrompts"
+                :key="item.label"
+                class="h-7 rounded-full shrink-0"
+                :style="{ width: `${item.label.length * 7 + 24}px` }"
+              />
+            </template>
+            <template v-else>
+              <button
+                v-for="item in suggestedPrompts"
+                :key="item.label"
+                class="px-3 py-1.5 rounded-full border border-default text-xs hover:bg-elevated transition-colors cursor-pointer shrink-0"
+                @click="useSuggestedPrompt(item)"
+              >
+                {{ item.label }}
+              </button>
+            </template>
           </div>
           <ClientOnly>
             <ChatPrompt
               v-model="input"
               :status="chat.status"
               :error="chat.error"
+              :disabled="promptLoading"
               @submit="onSubmit"
               @stop="chat.stop()"
             />

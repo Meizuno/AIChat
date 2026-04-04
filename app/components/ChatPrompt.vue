@@ -2,6 +2,7 @@
 const props = defineProps<{
   status: 'idle' | 'submitted' | 'streaming' | 'error' | 'ready'
   error?: Error
+  disabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -37,6 +38,7 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 function handleSubmit() {
+  if (props.disabled) return
   if (isStreaming.value) {
     emit('stop')
   }
@@ -132,8 +134,9 @@ async function toggleRecording() {
         v-model="input"
         rows="1"
         placeholder="Message…"
-        class="flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-muted overflow-hidden"
+        class="flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-muted overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
         style="height: 28px"
+        :disabled="props.disabled"
         @input="autoResize"
         @keydown="onKeydown"
       />
@@ -141,11 +144,11 @@ async function toggleRecording() {
         <span v-if="isStreaming" class="shrink-0">
           <UButton icon="i-lucide-square" color="primary" variant="solid" size="sm" class="rounded-full" @click="emit('stop')" />
         </span>
-        <span v-else-if="hasText" class="shrink-0">
+        <span v-else-if="hasText && !props.disabled" class="shrink-0">
           <UButton icon="i-lucide-arrow-up" color="primary" variant="solid" size="sm" class="rounded-full" type="submit" />
         </span>
         <span v-else class="shrink-0">
-          <UButton icon="i-lucide-mic" color="neutral" variant="ghost" size="sm" class="rounded-full" @click="toggleRecording" />
+          <UButton icon="i-lucide-mic" color="neutral" variant="ghost" size="sm" class="rounded-full" :disabled="props.disabled" @click="toggleRecording" />
         </span>
       </Transition>
     </template>
@@ -157,7 +160,8 @@ async function toggleRecording() {
         v-model="input"
         rows="1"
         placeholder="Message…"
-        class="w-full resize-none bg-transparent text-sm outline-none placeholder:text-muted max-h-48 overflow-y-auto"
+        class="w-full resize-none bg-transparent text-sm outline-none placeholder:text-muted max-h-48 overflow-y-auto disabled:opacity-50 disabled:cursor-not-allowed"
+        :disabled="props.disabled"
         @input="autoResize"
         @keydown="onKeydown"
       />
