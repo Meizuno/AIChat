@@ -19,37 +19,30 @@ export default defineEventHandler(async (event) => {
 
   const client = await createMcpClient(event)
 
-  try {
-    const [transactions, rules] = await Promise.all([
-      callMcpTool<Transaction[]>(client, 'list_transactions', { type: 'expense', dateFrom, dateTo }),
-      callMcpTool<SalesSplitRule[]>(client, 'get_sales_split')
-    ])
+  const [transactions, rules] = await Promise.all([
+    callMcpTool<Transaction[]>(client, 'list_transactions', { type: 'expense', dateFrom, dateTo }),
+    callMcpTool<SalesSplitRule[]>(client, 'get_sales_split')
+  ])
 
-    const ruleMap = new Map(rules.map(r => [String(r.id), r.label]))
+  const ruleMap = new Map(rules.map(r => [String(r.id), r.label]))
 
-    // Sum by category, CZK only
-    const totals = new Map<string, number>()
-    for (const tx of transactions) {
-      if (tx.currency && tx.currency !== 'CZK') continue
-      const label = ruleMap.get(tx.category) ?? tx.category ?? 'Other'
-      totals.set(label, (totals.get(label) ?? 0) + tx.amount)
-    }
-
-    // Sort descending
-    const sorted = [...totals.entries()].sort((a, b) => b[1] - a[1])
-
-    return {
-      title: `Expenses by category — ${now.toLocaleString('en', { month: 'long', year: 'numeric' })}`,
-      type: 'pie',
-      labels: sorted.map(([label]) => label),
-      datasets: [{
-        label: 'Amount (CZK)',
-        data: sorted.map(([, amount]) => Math.round(amount * 100) / 100),
-        backgroundColor: sorted.map((_, i) => COLORS[i % COLORS.length])
-      }]
-    }
+  const totals = new Map<string, number>()
+  for (const tx of transactions) {
+    if (tx.currency && tx.currency !== 'CZK') continue
+    const label = ruleMap.get(tx.category) ?? tx.category ?? 'Other'
+    totals.set(label, (totals.get(label) ?? 0) + tx.amount)
   }
-  finally {
-    await client.close()
+
+  const sorted = [...totals.entries()].sort((a, b) => b[1] - a[1])
+
+  return {
+    title: `Expenses by category — ${now.toLocaleString('en', { month: 'long', year: 'numeric' })}`,
+    type: 'pie',
+    labels: sorted.map(([label]) => label),
+    datasets: [{
+      label: 'Amount (CZK)',
+      data: sorted.map(([, amount]) => Math.round(amount * 100) / 100),
+      backgroundColor: sorted.map((_, i) => COLORS[i % COLORS.length])
+    }]
   }
 })

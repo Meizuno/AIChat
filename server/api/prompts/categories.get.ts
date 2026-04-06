@@ -9,22 +9,17 @@ export default defineEventHandler(async (event) => {
 
   const client = await createMcpClient(event)
 
-  try {
-    const [rules, incomes] = await Promise.all([
-      callMcpTool<SalesSplitRule[]>(client, 'get_sales_split'),
-      callMcpTool<Transaction[]>(client, 'list_transactions', { type: 'income' })
-    ])
+  const [rules, incomes] = await Promise.all([
+    callMcpTool<SalesSplitRule[]>(client, 'get_sales_split'),
+    callMcpTool<Transaction[]>(client, 'list_transactions', { type: 'income' })
+  ])
 
-    const expenseSorted = [...rules].sort((a, b) => b.percent - a.percent)
-    const expenseList = expenseSorted.map(r => `- **${r.label}** — ${r.percent}%`).join('\n')
+  const expenseSorted = [...rules].sort((a, b) => b.percent - a.percent)
+  const expenseList = expenseSorted.map(r => `- **${r.label}** — ${r.percent}%`).join('\n')
 
-    const ruleMap = new Map(rules.map(r => [String(r.id), r.label]))
-    const incomeCategories = [...new Set(incomes.map(tx => ruleMap.get(tx.category) ?? tx.category ?? 'Other'))].sort()
-    const incomeList = incomeCategories.map(c => `- **${c}**`).join('\n')
+  const ruleMap = new Map(rules.map(r => [String(r.id), r.label]))
+  const incomeCategories = [...new Set(incomes.map(tx => ruleMap.get(tx.category) ?? tx.category ?? 'Other'))].sort()
+  const incomeList = incomeCategories.map(c => `- **${c}**`).join('\n')
 
-    return { text: `**Expense categories**\n\n${expenseList}\n\n**Income categories**\n\n${incomeList}` }
-  }
-  finally {
-    await client.close()
-  }
+  return { text: `**Expense categories**\n\n${expenseList}\n\n**Income categories**\n\n${incomeList}` }
 })

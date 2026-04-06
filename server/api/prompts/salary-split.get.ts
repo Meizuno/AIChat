@@ -19,28 +19,23 @@ export default defineEventHandler(async (event) => {
 
   const client = await createMcpClient(event)
 
-  try {
-    const preview = await callMcpTool<SalesSplitPreview>(client, 'get_sales_split_preview')
+  const preview = await callMcpTool<SalesSplitPreview>(client, 'get_sales_split_preview')
 
-    const now = new Date()
-    const entries = [...preview.rules].sort((a, b) => b.amount - a.amount)
+  const now = new Date()
+  const entries = [...preview.rules].sort((a, b) => b.amount - a.amount)
 
-    if (preview.unallocatedAmount > 0) {
-      entries.push({ id: -1, label: 'Unallocated', percent: preview.unallocatedPercent, amount: preview.unallocatedAmount })
-    }
-
-    return {
-      title: `Salary split — ${now.toLocaleString('en', { month: 'long', year: 'numeric' })}`,
-      type: 'pie',
-      labels: entries.map(r => `${r.label} (${r.percent}%)`),
-      datasets: [{
-        label: 'Amount (CZK)',
-        data: entries.map(r => Math.round(r.amount * 100) / 100),
-        backgroundColor: entries.map((_, i) => COLORS[i % COLORS.length])
-      }]
-    }
+  if (preview.unallocatedAmount > 0) {
+    entries.push({ id: -1, label: 'Unallocated', percent: preview.unallocatedPercent, amount: preview.unallocatedAmount })
   }
-  finally {
-    await client.close()
+
+  return {
+    title: `Salary split — ${now.toLocaleString('en', { month: 'long', year: 'numeric' })}`,
+    type: 'pie',
+    labels: entries.map(r => `${r.label} (${r.percent}%)`),
+    datasets: [{
+      label: 'Amount (CZK)',
+      data: entries.map(r => Math.round(r.amount * 100) / 100),
+      backgroundColor: entries.map((_, i) => COLORS[i % COLORS.length])
+    }]
   }
 })

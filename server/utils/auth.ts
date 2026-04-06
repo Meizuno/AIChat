@@ -24,26 +24,32 @@ export const verifyAccessToken = async (token: string): Promise<AuthUser | null>
   }
 }
 
-const tryRefresh = async (event: H3Event): Promise<AuthUser | null> => {
+// Deduplicates concurrent refresh calls for the same token
+const pendingRefreshes = new Map<string, Promise<{ access_token: string, refresh_token: string } | null>>()
+
+export const tryRefresh = async (event: H3Event): Promise<AuthUser | null> => {
   const refreshToken = getCookie(event, 'aic_refresh')
   if (!refreshToken) return null
-  try {
+
+  if (!pendingRefreshes.has(refreshToken)) {
     const config = useRuntimeConfig()
-    const result = await $fetch<{ access_token: string, refresh_token: string }>(
+    const promise = $fetch<{ access_token: string, refresh_token: string }>(
       `${config.authServiceUrl}/refresh`,
       { method: 'POST', body: { refresh_token: refreshToken } }
-    )
-    setAuthCookies(event, result.access_token, result.refresh_token)
-    const user = await verifyAccessToken(result.access_token)
-    if (user) {
-      event.context.user = user
-      event.context.accessToken = result.access_token
-    }
-    return user
+    ).catch(() => null).finally(() => pendingRefreshes.delete(refreshToken))
+    pendingRefreshes.set(refreshToken, promise)
   }
-  catch {
-    return null
+
+  const result = await pendingRefreshes.get(refreshToken)!
+  if (!result) return null
+
+  setAuthCookies(event, result.access_token, result.refresh_token)
+  const user = await verifyAccessToken(result.access_token)
+  if (user) {
+    event.context.user = user
+    event.context.accessToken = result.access_token
   }
+  return user
 }
 
 export const getAuthUser = async (event: H3Event): Promise<AuthUser | null> => {

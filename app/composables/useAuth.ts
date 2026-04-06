@@ -31,6 +31,8 @@ export const useAuth = () => {
     await navigateTo('/login')
   }
 
+  let pendingRefresh: Promise<void> | null = null
+
   const apiFetch = async <T>(url: string, options: Parameters<typeof $fetch>[1] = {}) => {
     try {
       return await $fetch<T>(url, options)
@@ -39,7 +41,12 @@ export const useAuth = () => {
       const status = (error as { statusCode?: number })?.statusCode ?? 0
       if (status === 401) {
         try {
-          await $fetch('/api/auth/refresh', { method: 'POST' })
+          if (!pendingRefresh) {
+            pendingRefresh = $fetch('/api/auth/refresh', { method: 'POST' })
+              .then(() => { pendingRefresh = null })
+              .catch(() => { pendingRefresh = null })
+          }
+          await pendingRefresh
           return await $fetch<T>(url, options)
         }
         catch {

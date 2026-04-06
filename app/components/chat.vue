@@ -30,20 +30,21 @@ const fetchMcpStatus = async () => {
 
 onMounted(() => {
   fetchMcpStatus()
-  const interval = setInterval(fetchMcpStatus, 30_000)
+  const interval = setInterval(fetchMcpStatus, 120_000)
   onUnmounted(() => clearInterval(interval))
 })
 
-const welcomeMessage = ref('')
-const botName = ref('')
-const suggestedPrompts = ref<{ label: string, prompt?: string, route?: string }[]>([])
+type AppConfig = { defaults: { welcomeMessage: string, botName: string }, suggestedPrompts: { label: string, prompt?: string, route?: string }[] }
+const appConfig = useState<AppConfig | null>('app-config', () => null)
+
+const welcomeMessage = computed(() => appConfig.value?.defaults.welcomeMessage ?? '')
+const botName = computed(() => appConfig.value?.defaults.botName ?? '')
+const suggestedPrompts = computed(() => appConfig.value?.suggestedPrompts ?? [])
 
 onMounted(async () => {
+  if (appConfig.value) return
   try {
-    const data = await $fetch<{ defaults: { welcomeMessage: string, botName: string }, suggestedPrompts: { label: string, prompt?: string, route?: string }[] }>('/api/config')
-    welcomeMessage.value = data.defaults.welcomeMessage
-    botName.value = data.defaults.botName
-    suggestedPrompts.value = data.suggestedPrompts
+    appConfig.value = await $fetch<AppConfig>('/api/config')
   }
   catch { /* ignore */ }
 })
@@ -294,7 +295,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
               <MDC
                 v-if="isTextUIPart(part)"
                 :value="normalizeMarkdownForMdc(part.text)"
-                :cache-key="isStreaming(message) ? `${message.id}-${index}-${part.text.length}` : `${message.id}-${index}`"
+                :cache-key="isStreaming(message) ? `${message.id}-${index}-${Math.floor(part.text.length / 80)}` : `${message.id}-${index}`"
                 class="*:first:mt-0 *:last:mb-0"
               />
             </template>

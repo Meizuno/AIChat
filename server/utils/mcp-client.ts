@@ -3,16 +3,35 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import type { H3Event } from 'h3'
 import { getMcpServers } from './mcp-config'
 
-export async function createMcpClient(event: H3Event): Promise<Client> {
-  const mcpToken = event.context.accessToken as string | undefined
-  const server = getMcpServers()[0]
-  if (!server) throw createError({ statusCode: 503, statusMessage: 'No MCP server configured' })
+// Per-token singleton pool — reuses live connections across requests
+const pool = new Map<string, Client>()
+
+async function getOrCreateClient(token: string, serverUrl: string): Promise<Client> {
+  const key = `${token}:${serverUrl}`
+  const existing = pool.get(key)
+  if (existing) return existing
 
   const client = new Client({ name: 'ai-chat', version: '1.0.0' })
-  await client.connect(new StreamableHTTPClientTransport(new URL(server.url), {
-    requestInit: { headers: { authorization: `Bearer ${mcpToken}` } }
+  await client.connect(new StreamableHTTPClientTransport(new URL(serverUrl), {
+    requestInit: { headers: { authorization: `Bearer ${token}` } }
   }))
+
+  // Remove from pool on close
+  const originalClose = client.close.bind(client)
+  client.close = async () => {
+    pool.delete(key)
+    return originalClose()
+  }
+
+  pool.set(key, client)
   return client
+}
+
+export async function createMcpClient(event: H3Event): Promise<Client> {
+  const token = (event.context.accessToken as string | undefined) ?? ''
+  const server = getMcpServers()[0]
+  if (!server) throw createError({ statusCode: 503, statusMessage: 'No MCP server configured' })
+  return getOrCreateClient(token, server.url)
 }
 
 export async function callMcpTool<T>(client: Client, name: string, args: Record<string, unknown> = {}): Promise<T> {

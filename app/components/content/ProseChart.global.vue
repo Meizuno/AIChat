@@ -1,18 +1,6 @@
 <script setup lang="ts">
 // @ts-nocheck
 import { Bar, Pie } from 'vue-chartjs'
-import {
-  Chart as ChartJS,
-  Title,
-  Tooltip,
-  Legend,
-  BarElement,
-  ArcElement,
-  CategoryScale,
-  LinearScale
-} from 'chart.js'
-
-ChartJS.register(Title, Tooltip, Legend, BarElement, ArcElement, CategoryScale, LinearScale)
 
 type ChartType = 'bar' | 'pie'
 type ChartDataset = { label: string, data: number[], backgroundColor?: string | string[] }
@@ -36,10 +24,7 @@ const parsed = computed(() => {
   }
 })
 
-const activeType = ref<ChartType>('pie')
-watch(parsed, (value) => {
-  activeType.value = value?.type === 'bar' ? 'bar' : 'pie'
-}, { immediate: true })
+const activeType = ref<ChartType>(parsed.value?.type === 'bar' ? 'bar' : 'pie')
 
 const DEFAULT_COLORS = [
   '#0ea5e9', '#14b8a6', '#84cc16', '#f59e0b',
@@ -80,24 +65,12 @@ const chartData = computed(() => {
   return { labels: parsed.value.labels, datasets }
 })
 
-
-const chartOptions = computed(() => ({
+const staticOptions = {
   responsive: true,
   maintainAspectRatio: false,
   interaction: { mode: 'index' as const, intersect: false },
   animation: { duration: 700, easing: 'easeOutQuart' as const },
   plugins: {
-    legend: {
-      display: activeType.value === 'pie',
-      position: 'bottom' as const,
-      labels: {
-        usePointStyle: true,
-        pointStyle: 'circle',
-        boxWidth: 8,
-        boxHeight: 8,
-        padding: 16
-      }
-    },
     title: { display: false },
     tooltip: {
       backgroundColor: 'rgba(15,23,42,0.9)',
@@ -108,22 +81,36 @@ const chartOptions = computed(() => ({
       padding: 10,
       cornerRadius: 10
     }
-  },
-  ...(activeType.value === 'bar' ? {
-    scales: {
-      y: {
-        beginAtZero: true,
-        grid: { color: 'rgba(148,163,184,0.16)' },
-        border: { display: false },
-        ticks: { color: '#64748b' }
-      },
-      x: {
-        grid: { display: false },
-        border: { display: false },
-        ticks: { color: '#475569' }
-      }
+  }
+}
+
+const barScales = {
+  scales: {
+    y: {
+      beginAtZero: true,
+      grid: { color: 'rgba(148,163,184,0.16)' },
+      border: { display: false },
+      ticks: { color: '#64748b' }
+    },
+    x: {
+      grid: { display: false },
+      border: { display: false },
+      ticks: { color: '#475569' }
     }
-  } : { cutout: '58%' })
+  }
+}
+
+const chartOptions = computed(() => ({
+  ...staticOptions,
+  plugins: {
+    ...staticOptions.plugins,
+    legend: {
+      display: activeType.value === 'pie',
+      position: 'bottom' as const,
+      labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 8, boxHeight: 8, padding: 16 }
+    }
+  },
+  ...(activeType.value === 'bar' ? barScales : { cutout: '58%' })
 }))
 </script>
 
