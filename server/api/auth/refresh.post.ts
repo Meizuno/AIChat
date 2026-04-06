@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
 
   const result = await $fetch<{ access_token: string, refresh_token: string }>(
     `${config.authServiceUrl}/refresh`,
-    { method: 'POST', headers: { authorization: `Bearer ${refreshToken}` } }
+    { method: 'POST', body: { refresh_token: refreshToken } }
   )
 
   setAuthCookies(event, result.access_token, result.refresh_token)
