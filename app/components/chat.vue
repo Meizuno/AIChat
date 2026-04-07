@@ -259,14 +259,25 @@ function isAssistantThinking(message: { id: string, role: string }) {
       <template #footer>
         <div class="w-full flex flex-col gap-3">
           <!-- User -->
-          <div class="flex items-center gap-3">
-            <UAvatar :src="user?.picture ?? undefined" :alt="user?.name ?? undefined" size="sm" />
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium truncate">{{ user?.name }}</p>
-              <p class="text-xs text-muted truncate">{{ user?.email }}</p>
+          <ClientOnly>
+            <div class="flex items-center gap-3">
+              <UAvatar :src="user?.picture ?? undefined" :alt="user?.name ?? undefined" size="sm" />
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium truncate">{{ user?.name }}</p>
+                <p class="text-xs text-muted truncate">{{ user?.email }}</p>
+              </div>
+              <UButton icon="i-lucide-log-out" variant="ghost" color="neutral" size="sm" @click="handleLogout" />
             </div>
-            <UButton icon="i-lucide-log-out" variant="ghost" color="neutral" size="sm" @click="handleLogout" />
-          </div>
+            <template #fallback>
+              <div class="flex items-center gap-3">
+                <USkeleton class="size-7 rounded-full shrink-0" />
+                <div class="flex-1 min-w-0 space-y-1.5">
+                  <USkeleton class="h-3 w-24 rounded" />
+                  <USkeleton class="h-3 w-32 rounded" />
+                </div>
+              </div>
+            </template>
+          </ClientOnly>
         </div>
       </template>
     </USidebar>
