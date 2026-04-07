@@ -149,6 +149,7 @@ async function toggleRecording() {
     <UTextarea
       ref="chatInput"
       v-model="input"
+      placeholder="Message…"
       :rows="1"
       autoresize
       variant="none"
