@@ -84,6 +84,7 @@ async function useSuggestedPrompt(item: { label: string, prompt?: string, route?
           ? { ...m, parts: [{ type: 'text' as const, text }] }
           : m
       )
+      scrollAfterRender()
     }
     catch {
       chat.messages = chat.messages.filter(m => m.id !== assistantId && m.id !== userId)
@@ -137,6 +138,7 @@ const chat = new Chat({
 function onSubmit() {
   chat.sendMessage({ text: input.value })
   input.value = ''
+  scrollToBottom(true)
 }
 
 function getMessageText(message: { parts?: unknown[] }) {
@@ -171,6 +173,31 @@ function isStreaming(message: { id: string, role: string }) {
   return message.role === 'assistant' && lastMessage?.id === message.id
     && (chat.status === 'submitted' || chat.status === 'streaming')
 }
+
+const scrollContainer = ref<HTMLElement | null>(null)
+
+function scrollAfterRender() {
+  if (!scrollContainer.value) return
+  const observer = new MutationObserver(() => {
+    scrollContainer.value?.scrollTo({ top: scrollContainer.value.scrollHeight, behavior: 'smooth' })
+  })
+  observer.observe(scrollContainer.value, { childList: true, subtree: true })
+  setTimeout(() => observer.disconnect(), 2000)
+}
+
+async function scrollToBottom(smooth = false) {
+  await nextTick()
+  if (scrollContainer.value) {
+    scrollContainer.value.scrollTo({
+      top: scrollContainer.value.scrollHeight,
+      behavior: smooth ? 'smooth' : 'instant'
+    })
+  }
+}
+
+watch(() => chat.status, (status) => {
+  if (status === 'submitted' || status === 'ready') scrollToBottom(true)
+})
 
 function isAssistantThinking(message: { id: string, role: string }) {
   const lastMessage = chat.messages[chat.messages.length - 1]
@@ -257,7 +284,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
         />
       </div>
 
-      <div class="flex-1 overflow-y-auto pt-4">
+      <div ref="scrollContainer" class="flex-1 overflow-y-auto pt-4">
         <div
           v-if="chat.messages.length === 0 && welcomeMessage"
           class="max-w-3xl mx-auto px-4 py-16 flex flex-col items-center gap-6"
