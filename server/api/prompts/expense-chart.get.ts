@@ -24,12 +24,16 @@ export default defineEventHandler(async (event) => {
     callMcpTool<SalesSplitRule[]>(client, 'get_sales_split')
   ])
 
-  const ruleMap = new Map(rules.map(r => [String(r.id), r.label]))
+  const ruleById = new Map(rules.map(r => [String(r.id), r.label]))
+  const ruleByLabel = new Map(rules.map(r => [r.label.toLowerCase(), r.label]))
 
   const totals = new Map<string, number>()
   for (const tx of transactions) {
     if (tx.currency && tx.currency !== 'CZK') continue
-    const label = ruleMap.get(tx.category) ?? tx.category ?? 'Other'
+    const label = ruleById.get(tx.category)
+      ?? ruleByLabel.get(tx.category.toLowerCase())
+      ?? tx.category
+      ?? 'Other'
     totals.set(label, (totals.get(label) ?? 0) + tx.amount)
   }
 

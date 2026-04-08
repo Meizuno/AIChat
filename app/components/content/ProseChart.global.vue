@@ -4,11 +4,13 @@ import { Bar, Pie } from 'vue-chartjs'
 
 type ChartType = 'bar' | 'pie'
 type ChartDataset = { label: string, data: number[], backgroundColor?: string | string[] }
+type ChartLegendRow = { label: string, value: number, percent: number, color: string }
 type ChartPayload = {
   title?: string
   type?: ChartType
   labels: string[]
   datasets: ChartDataset[]
+  legend?: ChartLegendRow[]
 }
 
 const props = defineProps({
@@ -35,7 +37,9 @@ const primaryDataset = computed(() => parsed.value?.datasets?.[0] ?? null)
 const total = computed(() => primaryDataset.value?.data.reduce((sum, value) => sum + value, 0) ?? 0)
 
 const legendRows = computed(() => {
-  if (!parsed.value || !primaryDataset.value) return []
+  if (!parsed.value) return []
+  if (parsed.value.legend) return parsed.value.legend
+  if (!primaryDataset.value) return []
   return parsed.value.labels.map((label, index) => {
     const value = primaryDataset.value?.data[index] ?? 0
     const percent = total.value > 0 ? Math.round((value / total.value) * 100) : 0
