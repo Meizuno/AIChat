@@ -16,27 +16,20 @@ const isStreaming = computed(
   () => props.status === "streaming" || props.status === "submitted",
 );
 const hasText = computed(() => input.value.trim().length > 0);
-const chatInput = useTemplateRef("chatInput");
-const charsPerLine = ref(0);
 
-onMounted(() => {
+const chatInput = useTemplateRef<any>("chatInput");
+const isMultiLine = ref(false);
+
+onMounted(async () => {
+  await nextTick();
   const el = chatInput.value?.textareaRef;
   if (!el) return;
-  const style = getComputedStyle(el);
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d")!;
-  ctx.font = `${style.fontSize} ${style.fontFamily}`;
-  const charWidth = ctx.measureText("m").width;
-  const paddingLeft = parseInt(style.paddingLeft);
-  const paddingRight = parseInt(style.paddingRight);
-  const contentWidth = el.clientWidth - paddingLeft - paddingRight;
-  charsPerLine.value = Math.floor(contentWidth / charWidth);
-});
-
-const isExpanded = computed(() => {
-  if (!charsPerLine.value) return false;
-  const lines = input.value.split("\n");
-  return lines.some(line => line.length > charsPerLine.value) || lines.length > 1;
+  const singleLineHeight = el.clientHeight;
+  const observer = new ResizeObserver(() => {
+    isMultiLine.value = el.clientHeight > singleLineHeight;
+  });
+  observer.observe(el);
+  onUnmounted(() => observer.disconnect());
 });
 
 function handleSubmit() {
@@ -141,9 +134,7 @@ async function toggleRecording() {
   <form
     v-if="!isRecording && !isTranscribing"
     class="rounded-2xl border border-default bg-default transition-all focus-within:ring-2 focus-within:ring-primary/30 focus-within:border-primary/50"
-    :class="
-      isExpanded ? 'flex flex-col gap-2 p-3' : 'flex items-end gap-2 px-3 py-1.5'
-    "
+    :class="isMultiLine ? 'flex flex-col gap-2 p-3' : 'flex items-end gap-2 px-3 py-1.5'"
     @submit.prevent="handleSubmit"
   >
     <UTextarea
@@ -151,11 +142,12 @@ async function toggleRecording() {
       v-model="input"
       placeholder="Message…"
       :rows="1"
+      :maxrows="8"
       autoresize
       variant="none"
       class="flex-1 w-full"
     />
-    <div :class="isExpanded ? 'flex justify-end' : 'shrink-0'">
+    <div :class="isMultiLine ? 'flex justify-end' : 'shrink-0'">
       <Transition name="fade">
         <span v-if="isStreaming" class="shrink-0 pb-0.5">
           <UButton
@@ -216,9 +208,4 @@ async function toggleRecording() {
   transform: scale(0.8);
 }
 
-.textarea-autoresize {
-  field-sizing: content;
-  min-height: 28px;
-  max-height: 192px;
-}
 </style>

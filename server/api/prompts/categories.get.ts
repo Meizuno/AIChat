@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
   const client = await createMcpClient(event)
 
   const [rules, incomeCategories] = await Promise.all([
-    callMcpTool<SalesSplitRule[]>(client, 'get_sales_split'),
+    callMcpTool<SalesSplitRule[]>(client, 'get_expense_categories'),
     callMcpTool<IncomeCategory[]>(client, 'get_income_categories')
   ])
 

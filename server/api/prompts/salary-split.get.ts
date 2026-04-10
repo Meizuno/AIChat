@@ -6,7 +6,7 @@ type SalesSplitPreview = {
   totalAllocatedPercent: number
   unallocatedPercent: number
   unallocatedAmount: number
-  rules: { id: number, label: string, percent: number, amount: number }[]
+  categories: { id: number, label: string, percent: number, amount: number }[]
 }
 
 const COLORS = [
@@ -19,10 +19,10 @@ export default defineEventHandler(async (event) => {
 
   const client = await createMcpClient(event)
 
-  const preview = await callMcpTool<SalesSplitPreview>(client, 'get_sales_split_preview')
+  const preview = await callMcpTool<SalesSplitPreview>(client, 'get_expense_category_preview')
 
   const now = new Date()
-  const entries = [...preview.rules].sort((a, b) => b.amount - a.amount)
+  const entries = [...preview.categories].sort((a, b) => b.amount - a.amount)
 
   if (preview.unallocatedAmount > 0) {
     entries.push({ id: -1, label: 'Unallocated', percent: preview.unallocatedPercent, amount: preview.unallocatedAmount })

@@ -37,5 +37,6 @@ export async function createMcpClient(event: H3Event): Promise<Client> {
 export async function callMcpTool<T>(client: Client, name: string, args: Record<string, unknown> = {}): Promise<T> {
   const result = await client.callTool({ name, arguments: args })
   const text = (result.content as { type: string, text: string }[]).find(c => c.type === 'text')?.text ?? '{}'
+  if (result.isError) throw createError({ statusCode: 502, statusMessage: text })
   return JSON.parse(text) as T
 }
