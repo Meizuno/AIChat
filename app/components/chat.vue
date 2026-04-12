@@ -232,7 +232,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
       <!-- Brand -->
       <div class="flex items-center gap-2">
         <img src="/favicon.svg" class="w-6 h-6" alt="logo">
-        <p class="font-semibold text-sm hidden sm:block">Meizuno AI</p>
+        <p class="font-semibold text-sm hidden xs:block">Meizuno AI</p>
       </div>
 
       <!-- Right: clear chat + MCP button + user dropdown -->
@@ -251,16 +251,18 @@ function isAssistantThinking(message: { id: string, role: string }) {
 
         <!-- MCP servers popover -->
         <UPopover>
-          <UButton variant="ghost" color="neutral" size="sm" class="relative px-2">
-            <!-- SVG MCP letters icon -->
-            <svg width="26" height="14" viewBox="0 0 26 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <text x="0" y="11" font-family="ui-monospace, 'Courier New', monospace" font-size="11" font-weight="700" fill="currentColor" letter-spacing="0.5">MCP</text>
+          <UButton variant="ghost" color="neutral" size="sm" class="px-2">
+            <!-- SVG MCP letters icon — color reflects overall status -->
+            <svg width="35" height="20" viewBox="0 0 34 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <text
+                x="1" y="14"
+                font-family="ui-monospace, 'Courier New', monospace"
+                font-size="18"
+                font-weight="800"
+                letter-spacing="0.5"
+                :fill="mcpStatus === null ? '#94a3b8' : mcpStatus.connected ? '#22c55e' : '#ef4444'"
+              >MCP</text>
             </svg>
-            <!-- Overall status dot -->
-            <span
-              class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full"
-              :class="mcpStatus === null ? 'bg-muted animate-pulse' : mcpStatus.connected ? 'bg-green-500' : 'bg-red-500'"
-            />
           </UButton>
 
           <template #content>
@@ -325,7 +327,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
             </UButton>
           </UDropdownMenu>
           <template #fallback>
-            <USkeleton class="h-8 w-8 rounded-lg" />
+            <USkeleton class="h-9 w-14.5 rounded-lg" />
           </template>
         </ClientOnly>
       </div>
