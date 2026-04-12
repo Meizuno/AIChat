@@ -41,19 +41,28 @@ const MONTH_NAV_START = new Date(2026, 0, 1) // January 2026
 const monthOptions = computed(() => {
   const nav = localPayload.value?.navigation
   if (!nav) return []
-  const opts: { label: string, value: string }[] = []
   const now = new Date()
+
+  // Year entries (current year down to start year)
+  const yearOpts: { label: string, value: string }[] = []
+  for (let y = now.getFullYear(); y >= MONTH_NAV_START.getFullYear(); y--) {
+    yearOpts.push({ label: `${y} — Full year`, value: `${y}-0` })
+  }
+
+  // Month entries (current month down to Jan 2026)
+  const monthOpts: { label: string, value: string }[] = []
   let d = new Date(now.getFullYear(), now.getMonth(), 1)
   while (d >= MONTH_NAV_START) {
     const m = d.getMonth() + 1
     const y = d.getFullYear()
-    opts.push({
+    monthOpts.push({
       label: d.toLocaleString('en', { month: 'long', year: 'numeric' }),
       value: `${y}-${m}`
     })
     d = new Date(y, d.getMonth() - 1, 1)
   }
-  return opts
+
+  return [...yearOpts, ...monthOpts]
 })
 
 const selectedMonth = computed(() => {

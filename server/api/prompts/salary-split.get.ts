@@ -1,13 +1,8 @@
 import { requireAuthUser } from '../../utils/auth'
 import { createMcpClient, callMcpTool } from '../../utils/mcp-client'
 
-type SalesSplitPreview = {
-  totalIncome: number
-  totalAllocatedPercent: number
-  unallocatedPercent: number
-  unallocatedAmount: number
-  categories: { id: number, label: string, percent: number, amount: number }[]
-}
+type Transaction = { id: number, date: string, name: string, amount: number, currency: string | null, type: string, category: string }
+type ExpenseCategory = { id: number, label: string, percent: number, color: string }
 
 const COLORS = [
   '#0ea5e9', '#14b8a6', '#84cc16', '#f59e0b',
@@ -17,25 +12,53 @@ const COLORS = [
 export default defineEventHandler(async (event) => {
   await requireAuthUser(event)
 
+  const query = getQuery(event)
+  const now = new Date()
+  const month = query.month !== undefined ? parseInt(query.month as string) : now.getMonth() + 1
+  const year = query.year ? parseInt(query.year as string) : now.getFullYear()
+  const isFullYear = month === 0
+
+  const dateFrom = isFullYear ? `${year}-01-01` : `${year}-${String(month).padStart(2, '0')}-01`
+  const dateTo = isFullYear ? `${year}-12-31` : new Date(year, month, 0).toISOString().slice(0, 10)
+  const periodLabel = isFullYear ? String(year) : new Date(year, month - 1).toLocaleString('en', { month: 'long', year: 'numeric' })
+
   const client = await createMcpClient(event)
 
-  const preview = await callMcpTool<SalesSplitPreview>(client, 'get_expense_category_preview')
+  const [incomeTx, categories] = await Promise.all([
+    callMcpTool<Transaction[]>(client, 'list_transactions', { type: 'income', dateFrom, dateTo }),
+    callMcpTool<ExpenseCategory[]>(client, 'get_expense_categories')
+  ])
 
-  const now = new Date()
-  const entries = [...preview.categories].sort((a, b) => b.amount - a.amount)
+  const totalIncome = incomeTx
+    .filter(tx => !tx.currency || tx.currency === 'CZK')
+    .reduce((sum, tx) => sum + Math.round(tx.amount * 100), 0) / 100
 
-  if (preview.unallocatedAmount > 0) {
-    entries.push({ id: -1, label: 'Unallocated', percent: preview.unallocatedPercent, amount: preview.unallocatedAmount })
+  const totalAllocatedPercent = categories.reduce((s, c) => s + Number(c.percent), 0)
+  const unallocatedPercent = Math.max(0, 100 - totalAllocatedPercent)
+  const unallocatedAmount = Math.round(totalIncome * unallocatedPercent) / 100
+
+  const entries = categories
+    .map((c, i) => ({
+      label: c.label,
+      percent: Number(c.percent),
+      amount: Math.round(totalIncome * Number(c.percent)) / 100,
+      color: COLORS[i % COLORS.length]
+    }))
+    .sort((a, b) => b.amount - a.amount)
+
+  if (unallocatedAmount > 0) {
+    entries.push({ label: 'Unallocated', percent: unallocatedPercent, amount: unallocatedAmount, color: '#94a3b8' })
   }
 
   return {
-    title: `Salary split — ${now.toLocaleString('en', { month: 'long', year: 'numeric' })}`,
+    title: `Salary split — ${periodLabel}`,
+    navigation: { route: '/api/prompts/salary-split', month, year },
     type: 'pie',
     labels: entries.map(r => `${r.label} (${r.percent}%)`),
     datasets: [{
       label: 'Amount (CZK)',
-      data: entries.map(r => Math.round(r.amount * 100) / 100),
-      backgroundColor: entries.map((_, i) => COLORS[i % COLORS.length])
+      data: entries.map(r => r.amount),
+      backgroundColor: entries.map(r => r.color)
     }]
   }
 })

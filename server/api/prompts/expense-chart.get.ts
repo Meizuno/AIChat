@@ -14,11 +14,13 @@ export default defineEventHandler(async (event) => {
 
   const query = getQuery(event)
   const now = new Date()
-  const month = query.month ? parseInt(query.month as string) : now.getMonth() + 1
+  const month = query.month !== undefined ? parseInt(query.month as string) : now.getMonth() + 1
   const year = query.year ? parseInt(query.year as string) : now.getFullYear()
+  const isFullYear = month === 0
 
-  const dateFrom = `${year}-${String(month).padStart(2, '0')}-01`
-  const dateTo = new Date(year, month, 0).toISOString().slice(0, 10)
+  const dateFrom = isFullYear ? `${year}-01-01` : `${year}-${String(month).padStart(2, '0')}-01`
+  const dateTo = isFullYear ? `${year}-12-31` : new Date(year, month, 0).toISOString().slice(0, 10)
+  const periodLabel = isFullYear ? String(year) : new Date(year, month - 1).toLocaleString('en', { month: 'long', year: 'numeric' })
 
   const client = await createMcpClient(event)
 
@@ -48,7 +50,7 @@ export default defineEventHandler(async (event) => {
   const total = sorted.reduce((s, [, v]) => s + v, 0)
 
   return {
-    title: `Expenses by category — ${new Date(year, month - 1).toLocaleString('en', { month: 'long', year: 'numeric' })}`,
+    title: `Expenses by category — ${periodLabel}`,
     navigation: { route: '/api/prompts/expense-chart', month, year },
     type: 'pie',
     labels: sorted.map(([label]) => label),

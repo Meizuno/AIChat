@@ -10,10 +10,10 @@ function normalizeMarkdownForMdc(value: string) {
 
 const { user, logout } = useAuth()
 const input = ref('')
-const sidebarOpen = ref(true)
 const MCP_DISPLAY_NAME = 'Money Manager'
 
-type McpStatus = { connected: boolean, toolCount: number, tools: string[] }
+type ServerStatus = { name: string, connected: boolean, toolCount: number, tools: string[] }
+type McpStatus = { connected: boolean, toolCount: number, tools: string[], servers: ServerStatus[] }
 const mcpStatus = ref<McpStatus | null>(null)
 const mcpLoading = ref(false)
 
@@ -117,6 +117,24 @@ async function handleLogout() {
   await navigateTo('/login')
 }
 
+const userMenuItems = computed(() => [
+  [
+    {
+      label: user.value?.name ?? '',
+      avatar: { src: user.value?.picture ?? undefined, alt: user.value?.name ?? undefined },
+      disabled: true
+    }
+  ],
+  [
+    {
+      label: 'Log out',
+      icon: 'i-lucide-log-out',
+      color: 'error' as const,
+      onSelect: handleLogout
+    }
+  ]
+])
+
 const chat = new Chat({
   transport: new DefaultChatTransport(),
   onData(part) {
@@ -208,92 +226,110 @@ function isAssistantThinking(message: { id: string, role: string }) {
 </script>
 
 <template>
-  <div class="flex h-screen overflow-hidden">
-    <USidebar v-model:open="sidebarOpen" collapsible="offcanvas" :ui="{ footer: 'sm:pb-6' }">
-      <template #header>
-        <div class="flex items-center justify-between w-full">
-          <div class="flex items-center gap-2">
-            <img src="/favicon.svg" class="w-6 h-6" alt="logo">
-            <p class="font-semibold">Meizuno AI</p>
-          </div>
+  <div class="flex flex-col h-screen overflow-hidden">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-4 py-2.5 shrink-0 border-b border-default">
+      <!-- Brand -->
+      <div class="flex items-center gap-2">
+        <img src="/favicon.svg" class="w-6 h-6" alt="logo">
+        <p class="font-semibold text-sm hidden sm:block">Meizuno AI</p>
+      </div>
+
+      <!-- Right: clear chat + MCP button + user dropdown -->
+      <div class="flex items-center gap-1">
+        <!-- Clear chat -->
+        <UTooltip text="Clear chat" :delay-duration="500">
           <UButton
-            icon="i-lucide-x"
+            icon="i-lucide-square-pen"
             variant="ghost"
             color="neutral"
             size="sm"
-            class="lg:hidden"
-            @click="sidebarOpen = false"
+            :disabled="chat.messages.length === 0"
+            @click="chat.messages = []; usage = null"
           />
-        </div>
-      </template>
+        </UTooltip>
 
-      <!-- MCP Servers -->
-      <div class="px-2 py-2">
-        <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">MCP Servers</p>
-        <UTooltip
-          :text="mcpStatus?.connected ? `${mcpStatus.toolCount} tool${mcpStatus.toolCount === 1 ? '' : 's'}: ${mcpStatus.tools.join(', ')}` : 'Money Manager server unreachable'"
-          :delay-duration="200"
-        >
-          <div class="flex items-center gap-2 cursor-default rounded-md px-2 py-1.5 hover:bg-elevated">
+        <!-- MCP servers popover -->
+        <UPopover>
+          <UButton variant="ghost" color="neutral" size="sm" class="relative px-2">
+            <!-- SVG MCP letters icon -->
+            <svg width="26" height="14" viewBox="0 0 26 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <text x="0" y="11" font-family="ui-monospace, 'Courier New', monospace" font-size="11" font-weight="700" fill="currentColor" letter-spacing="0.5">MCP</text>
+            </svg>
+            <!-- Overall status dot -->
             <span
-              class="w-2 h-2 rounded-full shrink-0"
+              class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full"
               :class="mcpStatus === null ? 'bg-muted animate-pulse' : mcpStatus.connected ? 'bg-green-500' : 'bg-red-500'"
             />
-            <span class="text-sm truncate flex-1">
-              <template v-if="mcpStatus === null">Checking…</template>
-              <template v-else>Money Manager</template>
-            </span>
-            <UButton
-              icon="i-lucide-refresh-cw"
-              variant="ghost"
-              color="neutral"
-              size="xs"
-              class="shrink-0"
-              :loading="mcpLoading"
-              @click="fetchMcpStatus"
-            />
-          </div>
-        </UTooltip>
-      </div>
+          </UButton>
 
-      <template #footer>
-        <div class="w-full flex flex-col gap-3">
-          <!-- User -->
-          <ClientOnly>
-            <div class="flex items-center gap-3">
-              <UAvatar :src="user?.picture ?? undefined" :alt="user?.name ?? undefined" size="sm" />
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium truncate">{{ user?.name }}</p>
-                <p class="text-xs text-muted truncate">{{ user?.email }}</p>
+          <template #content>
+            <div class="p-3 w-64">
+              <div class="flex items-center justify-between mb-3">
+                <p class="text-xs font-semibold text-highlighted uppercase tracking-wider">MCP Servers</p>
+                <UButton
+                  icon="i-lucide-refresh-cw"
+                  variant="ghost"
+                  color="neutral"
+                  size="xs"
+                  :loading="mcpLoading"
+                  @click="fetchMcpStatus"
+                />
               </div>
-              <UButton icon="i-lucide-log-out" variant="ghost" color="neutral" size="sm" @click="handleLogout" />
-            </div>
-            <template #fallback>
-              <div class="flex items-center gap-3">
-                <USkeleton class="size-7 rounded-full shrink-0" />
-                <div class="flex-1 min-w-0 space-y-1.5">
-                  <USkeleton class="h-3 w-24 rounded" />
-                  <USkeleton class="h-3 w-32 rounded" />
+
+              <!-- Per-server rows -->
+              <div
+                v-if="mcpStatus?.servers?.length"
+                class="space-y-1"
+              >
+                <div
+                  v-for="server in mcpStatus.servers"
+                  :key="server.name"
+                  class="flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-elevated transition-colors"
+                >
+                  <span
+                    class="w-2 h-2 rounded-full shrink-0"
+                    :class="server.connected ? 'bg-green-500' : 'bg-red-500'"
+                  />
+                  <span class="flex-1 text-sm font-medium truncate">{{ server.name }}</span>
+                  <span
+                    v-if="server.connected"
+                    class="text-xs text-muted shrink-0"
+                  >{{ server.toolCount }} tool{{ server.toolCount === 1 ? '' : 's' }}</span>
+                  <span v-else class="text-xs text-red-500 shrink-0">unreachable</span>
                 </div>
               </div>
-            </template>
-          </ClientOnly>
-        </div>
-      </template>
-    </USidebar>
 
-    <!-- Main content -->
-    <div class="flex flex-col flex-1 h-screen min-w-0 overflow-hidden">
-      <!-- Header -->
-      <div class="flex items-center px-4 py-3 shrink-0">
-        <UButton
-          :icon="sidebarOpen ? 'i-lucide-panel-left-close' : 'i-lucide-panel-left-open'"
-          variant="ghost"
-          color="neutral"
-          size="sm"
-          @click="sidebarOpen = !sidebarOpen"
-        />
+              <!-- Loading skeleton -->
+              <div v-else-if="mcpStatus === null" class="space-y-1">
+                <div v-for="i in 2" :key="i" class="flex items-center gap-2.5 px-2 py-2">
+                  <USkeleton class="w-2 h-2 rounded-full shrink-0" />
+                  <USkeleton class="h-3 flex-1 rounded" />
+                  <USkeleton class="h-3 w-12 rounded" />
+                </div>
+              </div>
+
+              <!-- No servers configured -->
+              <p v-else class="text-xs text-muted text-center py-2">No servers configured</p>
+            </div>
+          </template>
+        </UPopover>
+
+        <!-- User dropdown -->
+        <ClientOnly>
+          <UDropdownMenu :items="userMenuItems" :ui="{ content: 'w-56' }">
+            <UButton variant="ghost" color="neutral" size="sm" class="gap-1.5 px-2">
+              <UAvatar :src="user?.picture ?? undefined" :alt="user?.name ?? undefined" size="xs" />
+              <span class="text-xs font-medium hidden sm:block max-w-28 truncate">{{ user?.name }}</span>
+              <UIcon name="i-lucide-chevron-down" class="size-3 text-muted shrink-0" />
+            </UButton>
+          </UDropdownMenu>
+          <template #fallback>
+            <USkeleton class="h-8 w-8 rounded-lg" />
+          </template>
+        </ClientOnly>
       </div>
+    </div>
 
       <div ref="scrollContainer" class="flex-1 overflow-y-auto pt-4">
         <div
@@ -413,7 +449,6 @@ function isAssistantThinking(message: { id: string, role: string }) {
           </ClientOnly>
         </div>
       </div>
-    </div>
   </div>
 </template>
 
