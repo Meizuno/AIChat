@@ -15,9 +15,16 @@ export default defineEventHandler(async (event) => {
   ])
 
   const expenseSorted = [...rules].sort((a, b) => b.percent - a.percent)
+  const totalPercent = expenseSorted.reduce((s, r) => s + Number(r.percent), 0)
   const expenseList = expenseSorted.map(r => `- **${r.label}** — ${r.percent}%`).join('\n')
 
   const incomeList = [...incomeCategories].sort((a, b) => a.position - b.position).map(c => `- **${c.label}**`).join('\n')
 
-  return { text: `**Expense categories**\n\n${expenseList}\n\n**Income categories**\n\n${incomeList}` }
+  const note = totalPercent === 100
+    ? `> Total split: **${totalPercent}%** — fully allocated`
+    : totalPercent < 100
+      ? `> Total split: **${totalPercent}%** — **${100 - totalPercent}%** unallocated`
+      : `> Total split: **${totalPercent}%** — over-allocated by **${totalPercent - 100}%**`
+
+  return { text: `**Expense categories**\n\n${expenseList}\n\n${note}\n\n**Income categories**\n\n${incomeList}` }
 })

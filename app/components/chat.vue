@@ -34,12 +34,15 @@ onMounted(() => {
   onUnmounted(() => clearInterval(interval))
 })
 
-type AppConfig = { defaults: { welcomeMessage: string, botName: string }, suggestedPrompts: { label: string, prompt?: string, route?: string }[] }
+type PromptItem = { label: string, prompt?: string, route?: string }
+type PromptGroup = { server: string, prompts: PromptItem[] }
+type AppConfig = { defaults: { welcomeMessage: string, botName: string }, promptGroups: PromptGroup[] }
 const appConfig = useState<AppConfig | null>('app-config', () => null)
 
 const welcomeMessage = computed(() => appConfig.value?.defaults.welcomeMessage ?? '')
 const botName = computed(() => appConfig.value?.defaults.botName ?? '')
-const suggestedPrompts = computed(() => appConfig.value?.suggestedPrompts ?? [])
+const promptGroups = computed(() => appConfig.value?.promptGroups ?? [])
+const allPrompts = computed(() => promptGroups.value.flatMap(g => g.prompts))
 
 onMounted(async () => {
   if (appConfig.value) return
@@ -345,15 +348,24 @@ function isAssistantThinking(message: { id: string, role: string }) {
             <p v-if="botName" class="font-semibold text-base">{{ botName }}</p>
             <p class="text-sm text-muted mt-1">{{ welcomeMessage }}</p>
           </div>
-          <div v-if="suggestedPrompts.length" class="flex flex-wrap justify-center gap-2">
-            <button
-              v-for="item in suggestedPrompts"
-              :key="item.label"
-              class="px-4 py-2 rounded-full border border-default text-sm hover:bg-elevated transition-colors cursor-pointer"
-              @click="useSuggestedPrompt(item)"
+          <div v-if="promptGroups.length" class="w-full grid gap-3" :class="promptGroups.length > 1 ? 'grid-cols-1 sm:grid-cols-2 max-w-2xl' : 'max-w-md'">
+            <div
+              v-for="group in promptGroups"
+              :key="group.server"
+              class="rounded-xl border border-default bg-default/50 p-3"
             >
-              {{ item.label }}
-            </button>
+              <p class="text-xs font-semibold text-muted uppercase tracking-wider mb-2.5 px-1">{{ group.server }}</p>
+              <div class="grid gap-1.5">
+                <button
+                  v-for="item in group.prompts"
+                  :key="item.label"
+                  class="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-elevated transition-colors cursor-pointer"
+                  @click="useSuggestedPrompt(item)"
+                >
+                  {{ item.label }}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
         <UChatMessages
@@ -414,12 +426,12 @@ function isAssistantThinking(message: { id: string, role: string }) {
             </div>
           </Transition>
           <div
-            v-if="suggestedPrompts.length && chat.status === 'ready' && chat.messages.length > 0"
+            v-if="allPrompts.length && chat.status === 'ready' && chat.messages.length > 0"
             class="flex gap-2 mb-3 overflow-x-auto scrollbar-none"
           >
             <template v-if="promptLoading">
               <USkeleton
-                v-for="item in suggestedPrompts"
+                v-for="item in allPrompts"
                 :key="item.label"
                 class="h-7 rounded-full shrink-0"
                 :style="{ width: `${item.label.length * 7 + 24}px` }"
@@ -427,7 +439,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
             </template>
             <template v-else>
               <button
-                v-for="item in suggestedPrompts"
+                v-for="item in allPrompts"
                 :key="item.label"
                 class="px-3 py-1.5 rounded-full border border-default text-xs hover:bg-elevated transition-colors cursor-pointer shrink-0"
                 @click="useSuggestedPrompt(item)"

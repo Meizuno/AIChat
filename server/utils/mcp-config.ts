@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { load } from 'js-yaml'
 
-export type McpServerConfig = { name: string, url: string }
+export type SuggestedPrompt = { label: string, prompt?: string, route?: string }
+export type McpServerConfig = { name: string, url: string, suggestedPrompts?: SuggestedPrompt[] }
 
 export type AppConfig = {
   mcpServers: McpServerConfig[]
@@ -14,7 +15,6 @@ export type AppConfig = {
     botName: string
     welcomeMessage: string
   }
-  suggestedPrompts: { label: string, prompt?: string, route?: string }[]
 }
 
 export function getConfig(): AppConfig {
@@ -27,7 +27,6 @@ export function getConfig(): AppConfig {
     return {
       mcpServers: [],
       systemPrompt: 'You are a helpful financial assistant.',
-      suggestedPrompts: [],
       defaults: { currency: 'CZK', transactionType: 'expense', language: 'en', botName: '', welcomeMessage: '' }
     }
   }

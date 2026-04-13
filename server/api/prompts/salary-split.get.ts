@@ -33,10 +33,6 @@ export default defineEventHandler(async (event) => {
     .filter(tx => !tx.currency || tx.currency === 'CZK')
     .reduce((sum, tx) => sum + Math.round(tx.amount * 100), 0) / 100
 
-  const totalAllocatedPercent = categories.reduce((s, c) => s + Number(c.percent), 0)
-  const unallocatedPercent = Math.max(0, 100 - totalAllocatedPercent)
-  const unallocatedAmount = Math.round(totalIncome * unallocatedPercent) / 100
-
   const entries = categories
     .map((c, i) => ({
       label: c.label,
@@ -45,10 +41,6 @@ export default defineEventHandler(async (event) => {
       color: COLORS[i % COLORS.length]
     }))
     .sort((a, b) => b.amount - a.amount)
-
-  if (unallocatedAmount > 0) {
-    entries.push({ label: 'Unallocated', percent: unallocatedPercent, amount: unallocatedAmount, color: '#94a3b8' })
-  }
 
   return {
     title: `Salary split — ${periodLabel}`,

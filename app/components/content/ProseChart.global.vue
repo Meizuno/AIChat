@@ -6,6 +6,7 @@ type ChartType = 'bar' | 'pie'
 type ChartDataset = { label: string, data: number[], backgroundColor?: string | string[] }
 type TransactionItem = { id: number, date: string, name: string, amount: number }
 type ChartLegendRow = { label: string, value: number, percent: number, color: string, transactions?: TransactionItem[] }
+type ChartLegendGroup = { label: string, items: ChartLegendRow[] }
 type ChartNavigation = { route: string, month: number, year: number }
 type ChartPayload = {
   title?: string
@@ -13,6 +14,7 @@ type ChartPayload = {
   labels: string[]
   datasets: ChartDataset[]
   legend?: ChartLegendRow[]
+  legendGroups?: ChartLegendGroup[]
   navigation?: ChartNavigation
 }
 
@@ -147,6 +149,13 @@ const legendRows = computed(() => {
   })
 })
 
+const legendGroupsNormalized = computed<ChartLegendGroup[]>(() => {
+  if (!localPayload.value) return []
+  if (localPayload.value.legendGroups?.length) return localPayload.value.legendGroups
+  const rows = legendRows.value
+  return rows.length ? [{ label: '', items: rows }] : []
+})
+
 const chartData = computed(() => {
   if (!localPayload.value) return null
   const datasets = localPayload.value.datasets.map((ds, i) => ({
@@ -271,54 +280,61 @@ const chartOptions = computed(() => ({
           <Bar v-if="activeType === 'bar'" :data="chartData" :options="chartOptions" />
           <Pie v-else :data="chartData" :options="chartOptions" />
         </div>
-        <div v-if="legendRows.length" class="mt-4 grid gap-2">
-          <div
-            v-for="item in legendRows"
-            :key="item.label"
-            class="rounded-xl border border-slate-200/70 bg-white/70 dark:border-slate-700/60 dark:bg-slate-900/50"
-          >
-            <div
-              class="flex items-center gap-2 px-3 py-2"
-              :class="item.transactions?.length ? 'cursor-pointer select-none' : ''"
-              @click="item.transactions?.length ? toggleCategory(item.label) : undefined"
-            >
-              <span class="h-2.5 w-2.5 shrink-0 rounded-full" :style="{ backgroundColor: item.color }" />
-              <span class="flex-1 text-xs font-medium text-slate-700 dark:text-slate-200">{{ item.label }}</span>
-              <span class="text-xs text-slate-500 dark:text-slate-400">{{ item.value }} ({{ item.percent }}%)</span>
-              <UIcon
-                v-if="item.transactions?.length"
-                :name="expandedCategories.has(item.label) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-                class="h-3.5 w-3.5 shrink-0 text-slate-400"
-              />
-            </div>
-            <div class="px-3 pb-1">
-              <div class="relative h-1.5 rounded-full bg-slate-200/70 dark:bg-slate-700/70">
+        <div v-if="legendGroupsNormalized.length" class="mt-4 space-y-4">
+          <div v-for="group in legendGroupsNormalized" :key="group.label">
+            <p v-if="group.label" class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              {{ group.label }}
+            </p>
+            <div class="grid gap-2">
+              <div
+                v-for="item in group.items"
+                :key="`${group.label}:${item.label}`"
+                class="rounded-xl border border-slate-200/70 bg-white/70 dark:border-slate-700/60 dark:bg-slate-900/50"
+              >
                 <div
-                  class="h-1.5 rounded-full transition-all"
-                  :style="{
-                    width: item.percent > 0 ? `${Math.min(item.percent, 100)}%` : '2px',
-                    backgroundColor: item.percent > 100 ? '#ef4444' : item.color
-                  }"
-                />
-              </div>
-            </div>
-            <Transition
-              @enter="onExpandEnter"
-              @after-enter="onExpandAfterEnter"
-              @leave="onExpandLeave"
-            >
-              <div v-if="expandedCategories.has(item.label) && item.transactions?.length" class="border-t border-slate-200/70 dark:border-slate-700/60 px-3 py-2 space-y-1">
-                <div
-                  v-for="tx in item.transactions"
-                  :key="tx.id"
-                  class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400"
+                  class="flex items-center gap-2 px-3 py-2"
+                  :class="item.transactions?.length ? 'cursor-pointer select-none' : ''"
+                  @click="item.transactions?.length ? toggleCategory(`${group.label}:${item.label}`) : undefined"
                 >
-                  <span class="shrink-0 text-slate-400 dark:text-slate-500">{{ tx.date }}</span>
-                  <span class="flex-1 truncate">{{ tx.name }}</span>
-                  <span class="shrink-0 font-medium text-slate-700 dark:text-slate-300">{{ tx.amount }} CZK</span>
+                  <span class="h-2.5 w-2.5 shrink-0 rounded-full" :style="{ backgroundColor: item.color }" />
+                  <span class="flex-1 text-xs font-medium text-slate-700 dark:text-slate-200">{{ item.label }}</span>
+                  <span class="text-xs text-slate-500 dark:text-slate-400">{{ item.value }} ({{ item.percent }}%)</span>
+                  <UIcon
+                    v-if="item.transactions?.length"
+                    :name="expandedCategories.has(`${group.label}:${item.label}`) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                    class="h-3.5 w-3.5 shrink-0 text-slate-400"
+                  />
                 </div>
+                <div class="px-3 pb-1">
+                  <div class="relative h-1.5 rounded-full bg-slate-200/70 dark:bg-slate-700/70">
+                    <div
+                      class="h-1.5 rounded-full transition-all"
+                      :style="{
+                        width: item.percent > 0 ? `${Math.min(item.percent, 100)}%` : '2px',
+                        backgroundColor: item.percent > 100 ? '#ef4444' : item.color
+                      }"
+                    />
+                  </div>
+                </div>
+                <Transition
+                  @enter="onExpandEnter"
+                  @after-enter="onExpandAfterEnter"
+                  @leave="onExpandLeave"
+                >
+                  <div v-if="expandedCategories.has(`${group.label}:${item.label}`) && item.transactions?.length" class="border-t border-slate-200/70 dark:border-slate-700/60 px-3 py-2 space-y-1">
+                    <div
+                      v-for="tx in item.transactions"
+                      :key="tx.id"
+                      class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400"
+                    >
+                      <span class="shrink-0 text-slate-400 dark:text-slate-500">{{ tx.date }}</span>
+                      <span class="flex-1 truncate">{{ tx.name }}</span>
+                      <span class="shrink-0 font-medium text-slate-700 dark:text-slate-300">{{ tx.amount }} CZK</span>
+                    </div>
+                  </div>
+                </Transition>
               </div>
-            </Transition>
+            </div>
           </div>
         </div>
       </template>
