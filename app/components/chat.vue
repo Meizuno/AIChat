@@ -403,7 +403,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
         </UChatMessages>
       </div>
 
-      <div class="sticky bottom-6 z-20 bg-opacity-0 backdrop-blur">
+      <div class="sticky bottom-0 z-20 px-6 pb-6 pt-3 bg-opacity-0">
         <div class="max-w-3xl mx-auto relative">
           <Transition name="usage">
             <div v-if="usage" class="absolute -top-6 right-1 flex items-center gap-3 text-xs text-muted">

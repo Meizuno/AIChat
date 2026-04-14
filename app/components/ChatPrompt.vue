@@ -35,16 +35,12 @@ function handleSubmit() {
   }
 }
 
-// Prompt dropdown items — grouped by server
-const promptMenuItems = computed(() => {
-  if (!props.promptGroups?.length) return [];
-  return props.promptGroups.map((group) =>
-    group.prompts.map((p) => ({
-      label: p.label,
-      onSelect: () => emit("prompt", p),
-    })),
-  );
-});
+const promptsOpen = ref(false);
+
+function selectPrompt(item: PromptItem) {
+  promptsOpen.value = false;
+  emit("prompt", item);
+}
 
 // Recording
 const isRecording = ref(false);
@@ -138,7 +134,7 @@ async function toggleRecording() {
   <!-- Input form -->
   <form
     v-if="!isRecording && !isTranscribing"
-    class="rounded-2xl border border-default bg-default flex flex-col transition-all focus-within:ring-2 focus-within:ring-primary/30 focus-within:border-primary/50"
+    class="rounded-2xl border border-accented bg-muted flex flex-col transition-all focus-within:ring-2 focus-within:ring-primary/30 focus-within:border-primary/50"
     @submit.prevent="handleSubmit"
   >
     <!-- Textarea -->
@@ -154,19 +150,15 @@ async function toggleRecording() {
     />
 
     <!-- Divider -->
-    <div class="mx-2 border-t border-default" />
+    <div class="mx-2 border-t border-accented" />
 
     <!-- Action bar -->
     <div class="flex items-center gap-1 px-2 pb-2 pt-1.5">
-      <!-- Prompt groups dropdown -->
-      <UDropdownMenu
-        v-if="promptMenuItems.length"
-        :items="promptMenuItems"
-        :content="{
-          align: 'start',
-          sideOffset: 8,
-        }"
-        :ui="{ content: 'w-56' }"
+      <!-- Prompt groups picker -->
+      <UPopover
+        v-if="promptGroups?.length"
+        v-model:open="promptsOpen"
+        :content="{ align: 'start', sideOffset: 8 }"
       >
         <UButton
           icon="i-lucide-sparkles"
@@ -174,10 +166,31 @@ async function toggleRecording() {
           color="neutral"
           size="xs"
           :disabled="disabled || isStreaming"
-          label="Prompts"
-          class="text-xs"
         />
-      </UDropdownMenu>
+        <template #content>
+          <div class="w-64 p-2 space-y-3">
+            <div v-for="group in promptGroups" :key="group.server">
+              <p class="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
+                {{ group.server }}
+              </p>
+              <div class="space-y-0.5">
+                <button
+                  v-for="item in group.prompts"
+                  :key="item.label"
+                  class="flex items-center gap-2 w-full rounded-lg px-2 py-1.5 text-sm text-left hover:bg-elevated transition-colors cursor-pointer"
+                  @click="selectPrompt(item)"
+                >
+                  <UIcon
+                    :name="item.route ? 'i-lucide-chart-no-axes-combined' : 'i-lucide-message-circle'"
+                    class="size-3.5 shrink-0 text-muted"
+                  />
+                  <span class="truncate">{{ item.label }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </template>
+      </UPopover>
 
       <!-- Spacer -->
       <div class="flex-1" />
