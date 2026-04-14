@@ -1,13 +1,20 @@
 <script setup lang="ts">
+type PromptItem = { label: string; prompt?: string; route?: string };
+type PromptGroup = { server: string; prompts: PromptItem[] };
+
 const props = defineProps<{
   status: "idle" | "submitted" | "streaming" | "error" | "ready";
   error?: Error;
   disabled?: boolean;
+  promptGroups?: PromptGroup[];
+  hasMessages?: boolean;
 }>();
 
 const emit = defineEmits<{
   submit: [];
   stop: [];
+  clear: [];
+  prompt: [item: PromptItem];
 }>();
 
 const input = defineModel<string>({ default: "" });
@@ -18,19 +25,6 @@ const isStreaming = computed(
 const hasText = computed(() => input.value.trim().length > 0);
 
 const chatInput = useTemplateRef<any>("chatInput");
-const isMultiLine = ref(false);
-
-onMounted(async () => {
-  await nextTick();
-  const el = chatInput.value?.textareaRef;
-  if (!el) return;
-  const singleLineHeight = el.clientHeight;
-  const observer = new ResizeObserver(() => {
-    isMultiLine.value = el.clientHeight > singleLineHeight;
-  });
-  observer.observe(el);
-  onUnmounted(() => observer.disconnect());
-});
 
 function handleSubmit() {
   if (props.disabled) return;
@@ -40,6 +34,17 @@ function handleSubmit() {
     emit("submit");
   }
 }
+
+// Prompt dropdown items — grouped by server
+const promptMenuItems = computed(() => {
+  if (!props.promptGroups?.length) return [];
+  return props.promptGroups.map((group) =>
+    group.prompts.map((p) => ({
+      label: p.label,
+      onSelect: () => emit("prompt", p),
+    })),
+  );
+});
 
 // Recording
 const isRecording = ref(false);
@@ -133,10 +138,10 @@ async function toggleRecording() {
   <!-- Input form -->
   <form
     v-if="!isRecording && !isTranscribing"
-    class="rounded-2xl border border-default bg-default transition-all focus-within:ring-2 focus-within:ring-primary/30 focus-within:border-primary/50"
-    :class="isMultiLine ? 'flex flex-col gap-2 p-3' : 'flex items-end gap-2 px-3 py-1.5'"
+    class="rounded-2xl border border-default bg-default flex flex-col transition-all focus-within:ring-2 focus-within:ring-primary/30 focus-within:border-primary/50"
     @submit.prevent="handleSubmit"
   >
+    <!-- Textarea -->
     <UTextarea
       ref="chatInput"
       v-model="input"
@@ -145,39 +150,81 @@ async function toggleRecording() {
       :maxrows="8"
       autoresize
       variant="none"
-      class="flex-1 w-full"
+      class="flex-1 w-full px-1 pt-1"
     />
-    <div :class="isMultiLine ? 'flex justify-end' : 'shrink-0'">
-      <Transition name="fade">
-        <span v-if="isStreaming" class="shrink-0 pb-0.5">
+
+    <!-- Divider -->
+    <div class="mx-2 border-t border-default" />
+
+    <!-- Action bar -->
+    <div class="flex items-center gap-1 px-2 pb-2 pt-1.5">
+      <!-- Prompt groups dropdown -->
+      <UDropdownMenu
+        v-if="promptMenuItems.length"
+        :items="promptMenuItems"
+        :content="{
+          align: 'start',
+          sideOffset: 8,
+        }"
+        :ui="{ content: 'w-56' }"
+      >
+        <UButton
+          icon="i-lucide-sparkles"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          :disabled="disabled || isStreaming"
+          label="Prompts"
+          class="text-xs"
+        />
+      </UDropdownMenu>
+
+      <!-- Spacer -->
+      <div class="flex-1" />
+
+      <!-- Mic -->
+      <UButton
+        icon="i-lucide-mic"
+        color="neutral"
+        variant="ghost"
+        size="xs"
+        class="rounded-full"
+        :disabled="disabled || isStreaming"
+        @click="toggleRecording"
+      />
+
+      <!-- Clear chat -->
+      <UButton
+        icon="i-lucide-square-pen"
+        variant="ghost"
+        color="neutral"
+        size="xs"
+        class="rounded-full"
+        :disabled="!hasMessages"
+        @click="emit('clear')"
+      />
+
+      <!-- Send / Stop -->
+      <Transition name="fade" mode="out-in">
+        <span v-if="isStreaming" key="stop">
           <UButton
             icon="i-lucide-square"
             color="primary"
             variant="solid"
-            size="sm"
+            size="xs"
             class="rounded-full"
             @click="emit('stop')"
           />
         </span>
-        <span v-else-if="hasText && !props.disabled" class="shrink-0 pb-0.5">
+        <span v-else key="send">
           <UButton
             icon="i-lucide-arrow-up"
             color="primary"
-            variant="solid"
-            size="sm"
+            :variant="hasText && !disabled ? 'solid' : 'ghost'"
+            size="xs"
             class="rounded-full"
             type="submit"
-          />
-        </span>
-        <span v-else class="shrink-0 pb-0.5">
-          <UButton
-            icon="i-lucide-mic"
-            color="neutral"
-            variant="ghost"
-            size="sm"
-            class="rounded-full"
-            :disabled="props.disabled"
-            @click="toggleRecording"
+            :disabled="!hasText || disabled"
           />
         </span>
       </Transition>
@@ -207,5 +254,4 @@ async function toggleRecording() {
   opacity: 0;
   transform: scale(0.8);
 }
-
 </style>

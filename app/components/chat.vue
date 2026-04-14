@@ -42,7 +42,6 @@ const appConfig = useState<AppConfig | null>('app-config', () => null)
 const welcomeMessage = computed(() => appConfig.value?.defaults.welcomeMessage ?? '')
 const botName = computed(() => appConfig.value?.defaults.botName ?? '')
 const promptGroups = computed(() => appConfig.value?.promptGroups ?? [])
-const allPrompts = computed(() => promptGroups.value.flatMap(g => g.prompts))
 
 onMounted(async () => {
   if (appConfig.value) return
@@ -238,20 +237,8 @@ function isAssistantThinking(message: { id: string, role: string }) {
         <p class="font-semibold text-sm hidden xs:block">Meizuno AI</p>
       </div>
 
-      <!-- Right: clear chat + MCP button + user dropdown -->
+      <!-- Right: MCP button + user dropdown -->
       <div class="flex items-center gap-1">
-        <!-- Clear chat -->
-        <UTooltip text="Clear chat" :delay-duration="500">
-          <UButton
-            icon="i-lucide-square-pen"
-            variant="ghost"
-            color="neutral"
-            size="sm"
-            :disabled="chat.messages.length === 0"
-            @click="chat.messages = []; usage = null"
-          />
-        </UTooltip>
-
         <!-- MCP servers popover -->
         <UPopover>
           <UButton variant="ghost" color="neutral" size="sm" class="px-2">
@@ -425,37 +412,18 @@ function isAssistantThinking(message: { id: string, role: string }) {
               <span class="text-highlighted font-medium">{{ estimatedCost }}</span>
             </div>
           </Transition>
-          <div
-            v-if="allPrompts.length && chat.status === 'ready' && chat.messages.length > 0"
-            class="flex gap-2 mb-3 overflow-x-auto scrollbar-none"
-          >
-            <template v-if="promptLoading">
-              <USkeleton
-                v-for="item in allPrompts"
-                :key="item.label"
-                class="h-7 rounded-full shrink-0"
-                :style="{ width: `${item.label.length * 7 + 24}px` }"
-              />
-            </template>
-            <template v-else>
-              <button
-                v-for="item in allPrompts"
-                :key="item.label"
-                class="px-3 py-1.5 rounded-full border border-default text-xs hover:bg-elevated transition-colors cursor-pointer shrink-0"
-                @click="useSuggestedPrompt(item)"
-              >
-                {{ item.label }}
-              </button>
-            </template>
-          </div>
           <ClientOnly>
             <ChatPrompt
               v-model="input"
               :status="chat.status"
               :error="chat.error"
               :disabled="promptLoading"
+              :prompt-groups="promptGroups"
+              :has-messages="chat.messages.length > 0"
               @submit="onSubmit"
               @stop="chat.stop()"
+              @clear="chat.messages = []; usage = null"
+              @prompt="useSuggestedPrompt($event)"
             />
             <template #fallback>
               <div class="rounded-2xl border border-default bg-default px-3 py-2 h-10" />
