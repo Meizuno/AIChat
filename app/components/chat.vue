@@ -240,7 +240,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
       <!-- Right: MCP button + user dropdown -->
       <div class="flex items-center gap-1">
         <!-- MCP servers popover -->
-        <UPopover>
+        <UPopover :content="{ align: 'end' }">
           <UButton variant="ghost" color="neutral" size="sm" class="px-2">
             <!-- SVG MCP letters icon — color reflects overall status -->
             <svg width="35" height="20" viewBox="0 0 34 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
