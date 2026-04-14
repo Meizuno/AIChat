@@ -228,9 +228,9 @@ function isAssistantThinking(message: { id: string, role: string }) {
 </script>
 
 <template>
-  <div class="flex flex-col h-screen overflow-hidden">
+  <div ref="scrollContainer" class="h-screen overflow-y-auto">
     <!-- Header -->
-    <div class="flex items-center justify-between px-4 py-2.5 shrink-0 border-b border-default">
+    <div class="sticky top-0 z-20 flex items-center justify-between px-4 py-1 border-b border-default/50 bg-opacity-0 backdrop-blur">
       <!-- Brand -->
       <div class="flex items-center gap-2">
         <img src="/favicon.svg" class="w-6 h-6" alt="logo">
@@ -323,7 +323,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
       </div>
     </div>
 
-      <div ref="scrollContainer" class="flex-1 overflow-y-auto pt-4">
+      <div class="min-h-[calc(100vh-8rem)] pt-4">
         <div
           v-if="chat.messages.length === 0 && welcomeMessage"
           class="max-w-3xl mx-auto px-4 py-16 flex flex-col items-center gap-6"
@@ -403,7 +403,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
         </UChatMessages>
       </div>
 
-      <div class="p-6 shrink-0">
+      <div class="sticky bottom-6 z-20 bg-opacity-0 backdrop-blur">
         <div class="max-w-3xl mx-auto relative">
           <Transition name="usage">
             <div v-if="usage" class="absolute -top-6 right-1 flex items-center gap-3 text-xs text-muted">
