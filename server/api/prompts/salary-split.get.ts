@@ -42,6 +42,14 @@ export default defineEventHandler(async (event) => {
     }))
     .sort((a, b) => b.amount - a.amount)
 
+  const totalAllocatedPercent = categories.reduce((s, c) => s + Number(c.percent), 0)
+  const unallocatedPercent = Math.max(0, 100 - totalAllocatedPercent)
+  const unallocatedAmount = Math.round(totalIncome * unallocatedPercent) / 100
+
+  if (unallocatedAmount > 0) {
+    entries.push({ label: 'Unallocated', percent: unallocatedPercent, amount: unallocatedAmount, color: '#94a3b8' })
+  }
+
   return {
     title: `Salary split — ${periodLabel}`,
     navigation: { route: '/api/prompts/salary-split', month, year },
@@ -51,6 +59,12 @@ export default defineEventHandler(async (event) => {
       label: 'Amount (CZK)',
       data: entries.map(r => r.amount),
       backgroundColor: entries.map(r => r.color)
-    }]
+    }],
+    legend: entries.map(r => ({
+      label: r.label,
+      value: r.amount,
+      percent: r.percent,
+      color: r.color
+    }))
   }
 })
