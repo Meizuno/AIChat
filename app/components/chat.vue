@@ -37,19 +37,15 @@ onMounted(() => {
 type PromptItem = { label: string, prompt?: string, route?: string }
 type PromptGroup = { server: string, prompts: PromptItem[] }
 type AppConfig = { defaults: { welcomeMessage: string, botName: string }, promptGroups: PromptGroup[] }
-const appConfig = useState<AppConfig | null>('app-config', () => null)
+
+const { data: appConfig } = await useFetch<AppConfig>('/api/config', {
+  key: 'app-config',
+  headers: import.meta.server ? useRequestHeaders(['cookie']) : undefined
+})
 
 const welcomeMessage = computed(() => appConfig.value?.defaults.welcomeMessage ?? '')
 const botName = computed(() => appConfig.value?.defaults.botName ?? '')
 const promptGroups = computed(() => appConfig.value?.promptGroups ?? [])
-
-onMounted(async () => {
-  if (appConfig.value) return
-  try {
-    appConfig.value = await $fetch<AppConfig>('/api/config')
-  }
-  catch { /* ignore */ }
-})
 
 const promptLoading = ref(false)
 
@@ -413,23 +409,18 @@ function isAssistantThinking(message: { id: string, role: string }) {
               <span class="text-highlighted font-medium">{{ estimatedCost }}</span>
             </div>
           </Transition>
-          <ClientOnly>
-            <ChatPrompt
-              v-model="input"
-              :status="chat.status"
-              :error="chat.error"
-              :disabled="promptLoading"
-              :prompt-groups="promptGroups"
-              :has-messages="chat.messages.length > 0"
-              @submit="onSubmit"
-              @stop="chat.stop()"
-              @clear="chat.messages = []; usage = null"
-              @prompt="useSuggestedPrompt($event)"
-            />
-            <template #fallback>
-              <div class="rounded-2xl border border-default bg-default px-3 py-2 h-10" />
-            </template>
-          </ClientOnly>
+          <ChatPrompt
+            v-model="input"
+            :status="chat.status"
+            :error="chat.error"
+            :disabled="promptLoading"
+            :prompt-groups="promptGroups"
+            :has-messages="chat.messages.length > 0"
+            @submit="onSubmit"
+            @stop="chat.stop()"
+            @clear="chat.messages = []; usage = null"
+            @prompt="useSuggestedPrompt($event)"
+          />
         </div>
       </div>
   </div>
