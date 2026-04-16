@@ -3,7 +3,7 @@ import { createOpenAI } from '@ai-sdk/openai'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import type { H3Event } from 'h3'
-import { requireAuthUser, tryRefresh } from '../utils/auth'
+import { requireAuthUser, authenticate } from '../utils/auth'
 import { getMcpServers, getConfig } from '../utils/mcp-config'
 import type { McpServerConfig } from '../utils/mcp-config'
 
@@ -18,7 +18,7 @@ async function connectMcpClient(server: McpServerConfig, token: string): Promise
 }
 
 async function reconnectWithRefresh(ref: McpClientRef, event: H3Event): Promise<void> {
-  const user = await tryRefresh(event)
+  const user = await authenticate(event)
   if (!user) throw createError({ statusCode: 401, statusMessage: 'Session expired' })
   const newToken = event.context.accessToken as string
   await ref.client.close().catch(() => {})

@@ -9,11 +9,6 @@ export default defineEventHandler(async (event) => {
     return sendRedirect(event, '/login?error=missing_tokens')
   }
 
-  const user = await verifyAccessToken(accessToken)
-  if (!user) {
-    return sendRedirect(event, '/login?error=invalid_token')
-  }
-
   setAuthCookies(event, accessToken, refreshToken)
   return sendRedirect(event, '/')
 })

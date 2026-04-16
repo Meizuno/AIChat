@@ -17,6 +17,15 @@ type McpStatus = { connected: boolean, toolCount: number, tools: string[], serve
 const mcpStatus = ref<McpStatus | null>(null)
 const mcpLoading = ref(false)
 
+const mcpColor = computed(() => {
+  if (!mcpStatus.value) return '#94a3b8' // loading — gray
+  const servers = mcpStatus.value.servers ?? []
+  const connectedCount = servers.filter(s => s.connected).length
+  if (connectedCount === servers.length) return '#22c55e' // all connected — green
+  if (connectedCount > 0) return '#eab308' // partial — yellow
+  return '#ef4444' // none connected — red
+})
+
 const fetchMcpStatus = async () => {
   mcpLoading.value = true
   try {
@@ -38,19 +47,11 @@ type PromptItem = { label: string, prompt?: string, route?: string }
 type PromptGroup = { server: string, prompts: PromptItem[] }
 type AppConfig = { defaults: { welcomeMessage: string, botName: string }, promptGroups: PromptGroup[] }
 
-const appConfig = useState<AppConfig | null>('app-config', () => null)
+const { data: appConfig } = await useFetch<AppConfig>('/api/config', { key: 'app-config' })
 
 const welcomeMessage = computed(() => appConfig.value?.defaults.welcomeMessage ?? '')
 const botName = computed(() => appConfig.value?.defaults.botName ?? '')
 const promptGroups = computed(() => appConfig.value?.promptGroups ?? [])
-
-onMounted(async () => {
-  if (appConfig.value) return
-  try {
-    appConfig.value = await $fetch<AppConfig>('/api/config')
-  }
-  catch { /* ignore */ }
-})
 
 const promptLoading = ref(false)
 
@@ -245,14 +246,18 @@ function isAssistantThinking(message: { id: string, role: string }) {
         <UPopover :content="{ align: 'end' }">
           <UButton variant="ghost" color="neutral" size="sm" class="px-2">
             <!-- SVG MCP letters icon — color reflects overall status -->
-            <svg width="35" height="20" viewBox="0 0 34 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <svg
+              width="35" height="20" viewBox="0 0 34 18" fill="none"
+              xmlns="http://www.w3.org/2000/svg" aria-hidden="true"
+              :class="mcpStatus === null || mcpLoading ? 'animate-pulse' : ''"
+            >
               <text
                 x="1" y="14"
                 font-family="ui-monospace, 'Courier New', monospace"
                 font-size="18"
                 font-weight="800"
                 letter-spacing="0.5"
-                :fill="mcpStatus === null ? '#94a3b8' : mcpStatus.connected ? '#22c55e' : '#ef4444'"
+                :fill="mcpColor"
               >MCP</text>
             </svg>
           </UButton>

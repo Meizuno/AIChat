@@ -1,18 +1,16 @@
-import { getCookie } from 'h3'
-import { tryRefresh } from '../utils/auth'
+const SKIP_PATHS = [
+  '/api/auth/google',
+  '/api/auth/callback',
+  '/api/auth/refresh',
+  '/api/auth/logout',
+  '/api/_nuxt_icon/'
+]
 
 export default defineEventHandler(async (event) => {
   const path = event.path ?? ''
-  if (!path.startsWith('/api/') || path.startsWith('/api/auth/')) return
+  if (SKIP_PATHS.some(p => path.startsWith(p))) return
 
-  const token = getCookie(event, 'aic_access') ?? ''
-  const user = await verifyAccessToken(token)
-
-  if (user) {
-    event.context.user = user
-    event.context.accessToken = token
-    return
+  if (path.startsWith('/api/') || !path.includes('.')) {
+    await authenticate(event)
   }
-
-  await tryRefresh(event)
 })
