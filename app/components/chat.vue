@@ -78,9 +78,10 @@ async function useSuggestedPrompt(item: { label: string, prompt?: string, route?
 
     try {
       const data = await $fetch<Record<string, unknown>>(item.route)
+      const blockType = (data.component as string) ?? 'chart'
       const text = typeof data.text === 'string'
         ? data.text
-        : '```chart\n' + JSON.stringify(data) + '\n```'
+        : '```' + blockType + '\n' + JSON.stringify(data) + '\n```'
       chat.messages = chat.messages.map(m =>
         m.id === assistantId
           ? { ...m, parts: [{ type: 'text' as const, text }] }

@@ -27,10 +27,13 @@ async function getOrCreateClient(token: string, serverUrl: string): Promise<Clie
   return client
 }
 
-export async function createMcpClient(event: H3Event): Promise<Client> {
+export async function createMcpClient(event: H3Event, serverName?: string): Promise<Client> {
   const token = (event.context.accessToken as string | undefined) ?? ''
-  const server = getMcpServers()[0]
-  if (!server) throw createError({ statusCode: 503, statusMessage: 'No MCP server configured' })
+  const servers = getMcpServers()
+  const server = serverName
+    ? servers.find(s => s.name === serverName)
+    : servers[0]
+  if (!server) throw createError({ statusCode: 503, statusMessage: `MCP server${serverName ? ` "${serverName}"` : ''} not found` })
   return getOrCreateClient(token, server.url)
 }
 
