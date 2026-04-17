@@ -3,20 +3,25 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import type { H3Event } from 'h3'
 import { getMcpServers } from './mcp-config'
 
-// Per-token singleton pool — reuses live connections across requests
+// Persistent pool keyed by userId:serverUrl — connections live across requests
 const pool = new Map<string, Client>()
 
-async function getOrCreateClient(token: string, serverUrl: string): Promise<Client> {
-  const key = `${token}:${serverUrl}`
+async function getOrCreateClient(userId: string, serverUrl: string): Promise<Client> {
+  const key = `${userId}:${serverUrl}`
   const existing = pool.get(key)
   if (existing) return existing
 
+  const config = useRuntimeConfig()
   const client = new Client({ name: 'ai-chat', version: '1.0.0' })
   await client.connect(new StreamableHTTPClientTransport(new URL(serverUrl), {
-    requestInit: { headers: { authorization: `Bearer ${token}` } }
+    requestInit: {
+      headers: {
+        'x-api-key': config.mcpApiKey,
+        'x-user-id': userId
+      }
+    }
   }))
 
-  // Remove from pool on close
   const originalClose = client.close.bind(client)
   client.close = async () => {
     pool.delete(key)
@@ -28,13 +33,15 @@ async function getOrCreateClient(token: string, serverUrl: string): Promise<Clie
 }
 
 export async function createMcpClient(event: H3Event, serverName?: string): Promise<Client> {
-  const token = (event.context.accessToken as string | undefined) ?? ''
+  const userId = (event.context.user as { id: string })?.id
+  if (!userId) throw createError({ statusCode: 401, statusMessage: 'Not authenticated' })
+
   const servers = getMcpServers()
   const server = serverName
     ? servers.find(s => s.name === serverName)
     : servers[0]
   if (!server) throw createError({ statusCode: 503, statusMessage: `MCP server${serverName ? ` "${serverName}"` : ''} not found` })
-  return getOrCreateClient(token, server.url)
+  return getOrCreateClient(userId, server.url)
 }
 
 export async function callMcpTool<T>(client: Client, name: string, args: Record<string, unknown> = {}): Promise<T> {

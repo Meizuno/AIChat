@@ -1,69 +1,38 @@
 import { streamText, convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, tool, jsonSchema, stepCountIs } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import type { H3Event } from 'h3'
-import { requireAuthUser, authenticate } from '../utils/auth'
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { requireAuthUser } from '../utils/auth'
 import { getMcpServers, getConfig } from '../utils/mcp-config'
-import type { McpServerConfig } from '../utils/mcp-config'
+import { createMcpClient } from '../utils/mcp-client'
 
-type McpClientRef = { client: Client, server: McpServerConfig }
+async function getMcpTools(client: Client) {
+  const { tools: mcpTools } = await client.listTools()
 
-async function connectMcpClient(server: McpServerConfig, token: string): Promise<Client> {
-  const client = new Client({ name: 'ai-chat', version: '1.0.0' })
-  await client.connect(new StreamableHTTPClientTransport(new URL(server.url), {
-    requestInit: { headers: { authorization: `Bearer ${token}` } }
+  return Object.fromEntries(mcpTools.map((t) => {
+    const raw = t.inputSchema as Record<string, unknown>
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { $schema, additionalProperties, ...rest } = raw as Record<string, unknown>
+
+    const normalized: Record<string, unknown> = {
+      ...rest,
+      type: 'object',
+      properties: (rest?.properties as Record<string, unknown>) ?? {},
+      required: (rest?.required as string[]) ?? []
+    }
+
+    return [
+      t.name,
+      tool({
+        description: t.description ?? '',
+        inputSchema: jsonSchema(normalized),
+        execute: async (args) => {
+          const result = await client.callTool({ name: t.name, arguments: (args ?? {}) as Record<string, unknown> })
+          return result.content
+        }
+      })
+    ]
   }))
-  return client
-}
-
-async function reconnectWithRefresh(ref: McpClientRef, event: H3Event): Promise<void> {
-  const user = await authenticate(event)
-  if (!user) throw createError({ statusCode: 401, statusMessage: 'Session expired' })
-  const newToken = event.context.accessToken as string
-  await ref.client.close().catch(() => {})
-  ref.client = await connectMcpClient(ref.server, newToken)
-}
-
-function getMcpTools(ref: McpClientRef, event: H3Event) {
-  return async () => {
-    const { tools: mcpTools } = await ref.client.listTools()
-
-    return Object.fromEntries(mcpTools.map((t) => {
-      const raw = t.inputSchema as Record<string, unknown>
-
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { $schema, additionalProperties, ...rest } = raw as Record<string, unknown>
-
-      const normalized: Record<string, unknown> = {
-        ...rest,
-        type: 'object',
-        properties: (rest?.properties as Record<string, unknown>) ?? {},
-        required: (rest?.required as string[]) ?? []
-      }
-
-      return [
-        t.name,
-        tool({
-          description: t.description ?? '',
-          inputSchema: jsonSchema(normalized),
-          execute: async (args) => {
-            const callArgs = { name: t.name, arguments: (args ?? {}) as Record<string, unknown> }
-            try {
-              const result = await ref.client.callTool(callArgs)
-              return result.content
-            }
-            catch {
-              // Token likely expired — refresh and retry once
-              await reconnectWithRefresh(ref, event)
-              const result = await ref.client.callTool(callArgs)
-              return result.content
-            }
-          }
-        })
-      ]
-    }))
-  }
 }
 
 export default defineEventHandler(async (event) => {
@@ -72,17 +41,13 @@ export default defineEventHandler(async (event) => {
   const { messages } = await readBody(event)
   const { openaiApiKey } = useRuntimeConfig(event)
   const openai = createOpenAI({ apiKey: openaiApiKey })
-  const mcpToken = event.context.accessToken as string | undefined
 
-  const refs: McpClientRef[] = []
   let tools = {}
 
   for (const server of getMcpServers()) {
     try {
-      const client = await connectMcpClient(server, mcpToken ?? '')
-      const ref: McpClientRef = { client, server }
-      tools = { ...tools, ...await getMcpTools(ref, event)() }
-      refs.push(ref)
+      const client = await createMcpClient(event, server.name)
+      tools = { ...tools, ...await getMcpTools(client) }
     }
     catch (err) {
       console.warn(`[MCP] Could not connect to ${server.name}, skipping:`, (err as Error).message)
@@ -103,11 +68,9 @@ export default defineEventHandler(async (event) => {
     stream: createUIMessageStream({
       async execute({ writer }) {
         writer.merge(result.toUIMessageStream())
-
         const usage = await result.usage
-
         writer.write({ type: 'data-usage', data: usage } as never)
-        await Promise.all(refs.map(r => r.client.close()))
+        // Don't close — connections are pooled and reused
       }
     })
   })

@@ -14,7 +14,8 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     openaiApiKey: '',
-    authServiceUrl: ''
+    authServiceUrl: '',
+    mcpApiKey: ''
   },
 
   mdc: {
