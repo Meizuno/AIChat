@@ -4,6 +4,8 @@ type RecipeItem = { id: number, title: string, tags: string[], hasContent: boole
 type RecipesPayload = {
   tags: Tag[]
   recipes: RecipeItem[]
+  total: number
+  hasMore: boolean
   activeTag?: string
 }
 
@@ -27,7 +29,11 @@ const localData = ref<RecipesPayload | null>(parsed.value)
 watch(parsed, val => { localData.value = val })
 
 const activeTag = ref(parsed.value?.activeTag ?? '')
-const loading = ref(false)
+const recipes = ref<RecipeItem[]>(parsed.value?.recipes ?? [])
+const hasMore = ref(parsed.value?.hasMore ?? false)
+const total = ref(parsed.value?.total ?? 0)
+const loadingMore = ref(false)
+
 const expandedId = ref<number | null>(null)
 const recipeContent = ref<Map<number, string>>(new Map())
 const contentLoading = ref<number | null>(null)
@@ -41,13 +47,43 @@ const colorMap = computed(() => {
 })
 
 const filteredRecipes = computed(() => {
-  if (!localData.value) return []
-  if (!activeTag.value) return localData.value.recipes
-  return localData.value.recipes.filter(r => r.tags.includes(activeTag.value))
+  if (!activeTag.value) return recipes.value
+  return recipes.value.filter(r => r.tags.includes(activeTag.value))
 })
 
-function toggleTag(label: string) {
+async function toggleTag(label: string) {
   activeTag.value = activeTag.value === label ? '' : label
+  // Reload from server with tag filter
+  loadingMore.value = true
+  try {
+    const data = await $fetch<RecipesPayload>('/api/prompts/recipes', {
+      params: { limit: 10, offset: 0, ...(activeTag.value ? { tag: activeTag.value } : {}) }
+    })
+    recipes.value = data.recipes
+    hasMore.value = data.hasMore
+    total.value = data.total
+  }
+  catch { /* ignore */ }
+  finally { loadingMore.value = false }
+}
+
+async function loadMore() {
+  if (loadingMore.value || !hasMore.value) return
+  loadingMore.value = true
+  try {
+    const data = await $fetch<RecipesPayload>('/api/prompts/recipes', {
+      params: {
+        limit: 10,
+        offset: recipes.value.length,
+        ...(activeTag.value ? { tag: activeTag.value } : {})
+      }
+    })
+    recipes.value = [...recipes.value, ...data.recipes]
+    hasMore.value = data.hasMore
+    total.value = data.total
+  }
+  catch { /* ignore */ }
+  finally { loadingMore.value = false }
 }
 
 async function toggleRecipe(recipe: RecipeItem) {
@@ -112,7 +148,7 @@ function onExpandLeave(el: Element) {
         Recipes
       </p>
       <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-        {{ filteredRecipes.length }} recipe{{ filteredRecipes.length === 1 ? '' : 's' }}
+        {{ total }} recipe{{ total === 1 ? '' : 's' }}
         <template v-if="activeTag"> tagged <span class="font-medium text-slate-700 dark:text-slate-200">{{ activeTag }}</span></template>
       </p>
     </div>
@@ -181,8 +217,24 @@ function onExpandLeave(el: Element) {
       </div>
     </div>
 
+    <!-- Load more -->
+    <button
+      v-if="hasMore"
+      class="mt-3 w-full py-2 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors cursor-pointer"
+      :disabled="loadingMore"
+      @click="loadMore"
+    >
+      <template v-if="loadingMore">
+        <UIcon name="i-lucide-loader-2" class="inline h-3.5 w-3.5 animate-spin mr-1" />
+        Loading…
+      </template>
+      <template v-else>
+        Load more recipes
+      </template>
+    </button>
+
     <!-- Empty state -->
-    <p v-if="!filteredRecipes.length" class="text-sm text-slate-400 text-center py-6">
+    <p v-if="!filteredRecipes.length && !loadingMore" class="text-sm text-slate-400 text-center py-6">
       No recipes found{{ activeTag ? ` for "${activeTag}"` : '' }}
     </p>
   </div>
