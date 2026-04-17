@@ -233,7 +233,8 @@ function isAssistantThinking(message: { id: string, role: string }) {
 <template>
   <div ref="scrollContainer" class="h-screen overflow-y-auto">
     <!-- Header -->
-    <div class="sticky top-0 z-20 flex items-center justify-between px-4 py-1 border-b border-default/50 bg-opacity-0 backdrop-blur">
+    <div class="sticky top-0 z-20 border-b border-default/50 bg-opacity-0 backdrop-blur">
+      <div class="flex items-center justify-between max-w-3xl mx-auto px-4 py-1">
       <!-- Brand -->
       <div class="flex items-center gap-2">
         <img src="/favicon.svg" class="w-6 h-6" alt="logo">
@@ -327,6 +328,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
             <USkeleton class="h-9 w-14.5 rounded-lg" />
           </template>
         </ClientOnly>
+      </div>
       </div>
     </div>
 
