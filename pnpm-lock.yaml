@@ -29,27 +29,18 @@ importers:
       '@nuxtjs/mdc':
         specifier: ^0.20.2
         version: 0.20.2(magicast@0.5.2)
-      '@prisma/client':
-        specifier: ^6.19.3
-        version: 6.19.3(prisma@6.19.3(magicast@0.5.2)(typescript@5.9.3))(typescript@5.9.3)
       ai:
         specifier: ^6.0.116
         version: 6.0.116(zod@4.3.6)
       chart.js:
         specifier: ^4.5.1
         version: 4.5.1
-      jose:
-        specifier: ^6.2.2
-        version: 6.2.2
       js-yaml:
         specifier: ^4.1.1
         version: 4.1.1
       nuxt:
         specifier: ^4.4.2
         version: 4.4.2(bbbb060ae35580755b77e29625b2e604)
-      prisma:
-        specifier: ^6.19.3
-        version: 6.19.3(magicast@0.5.2)(typescript@5.9.3)
       tailwindcss:
         specifier: ^4.2.1
         version: 4.2.1
@@ -7499,6 +7490,7 @@ snapshots:
     optionalDependencies:
       prisma: 6.19.3(magicast@0.5.2)(typescript@5.9.3)
       typescript: 5.9.3
+    optional: true
 
   '@prisma/config@6.19.3(magicast@0.5.2)':
     dependencies:
@@ -7508,10 +7500,13 @@ snapshots:
       empathic: 2.0.0
     transitivePeerDependencies:
       - magicast
+    optional: true
 
-  '@prisma/debug@6.19.3': {}
+  '@prisma/debug@6.19.3':
+    optional: true
 
-  '@prisma/engines-version@7.1.1-3.c2990dca591cba766e3b7ef5d9e8a84796e47ab7': {}
+  '@prisma/engines-version@7.1.1-3.c2990dca591cba766e3b7ef5d9e8a84796e47ab7':
+    optional: true
 
   '@prisma/engines@6.19.3':
     dependencies:
@@ -7519,16 +7514,19 @@ snapshots:
       '@prisma/engines-version': 7.1.1-3.c2990dca591cba766e3b7ef5d9e8a84796e47ab7
       '@prisma/fetch-engine': 6.19.3
       '@prisma/get-platform': 6.19.3
+    optional: true
 
   '@prisma/fetch-engine@6.19.3':
     dependencies:
       '@prisma/debug': 6.19.3
       '@prisma/engines-version': 7.1.1-3.c2990dca591cba766e3b7ef5d9e8a84796e47ab7
       '@prisma/get-platform': 6.19.3
+    optional: true
 
   '@prisma/get-platform@6.19.3':
     dependencies:
       '@prisma/debug': 6.19.3
+    optional: true
 
   '@remirror/core-constants@3.0.0': {}
 
@@ -8741,6 +8739,7 @@ snapshots:
       rc9: 2.1.2
     optionalDependencies:
       magicast: 0.5.2
+    optional: true
 
   c12@3.3.3(magicast@0.5.2):
     dependencies:
@@ -9010,7 +9009,8 @@ snapshots:
 
   deep-is@0.1.4: {}
 
-  deepmerge-ts@7.1.5: {}
+  deepmerge-ts@7.1.5:
+    optional: true
 
   deepmerge@4.3.1: {}
 
@@ -9069,7 +9069,8 @@ snapshots:
     dependencies:
       type-fest: 5.4.4
 
-  dotenv@16.6.1: {}
+  dotenv@16.6.1:
+    optional: true
 
   dotenv@17.3.1: {}
 
@@ -9101,6 +9102,7 @@ snapshots:
     dependencies:
       '@standard-schema/spec': 1.1.0
       fast-check: 3.23.2
+    optional: true
 
   electron-to-chromium@1.5.313: {}
 
@@ -9149,7 +9151,8 @@ snapshots:
 
   emoticon@4.1.0: {}
 
-  empathic@2.0.0: {}
+  empathic@2.0.0:
+    optional: true
 
   encodeurl@2.0.0: {}
 
@@ -9491,6 +9494,7 @@ snapshots:
   fast-check@3.23.2:
     dependencies:
       pure-rand: 6.1.0
+    optional: true
 
   fast-deep-equal@3.1.3: {}
 
@@ -11207,7 +11211,8 @@ snapshots:
 
   pathe@2.0.3: {}
 
-  perfect-debounce@1.0.0: {}
+  perfect-debounce@1.0.0:
+    optional: true
 
   perfect-debounce@2.1.0: {}
 
@@ -11466,6 +11471,7 @@ snapshots:
       typescript: 5.9.3
     transitivePeerDependencies:
       - magicast
+    optional: true
 
   process-nextick-args@2.0.1: {}
 
@@ -11585,7 +11591,8 @@ snapshots:
 
   punycode@2.3.1: {}
 
-  pure-rand@6.1.0: {}
+  pure-rand@6.1.0:
+    optional: true
 
   qs@6.15.0:
     dependencies:

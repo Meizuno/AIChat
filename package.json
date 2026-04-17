@@ -6,7 +6,7 @@
     "build": "nuxt build",
     "dev": "nuxt dev",
     "preview": "nuxt preview",
-    "postinstall": "prisma generate && nuxt prepare",
+    "postinstall": "nuxt prepare",
     "lint": "eslint .",
     "typecheck": "nuxt typecheck"
   },
@@ -18,13 +18,10 @@
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@nuxt/ui": "^4.6.0",
     "@nuxtjs/mdc": "^0.20.2",
-    "@prisma/client": "^6.19.3",
     "ai": "^6.0.116",
     "chart.js": "^4.5.1",
-    "jose": "^6.2.2",
     "js-yaml": "^4.1.1",
     "nuxt": "^4.4.2",
-    "prisma": "^6.19.3",
     "tailwindcss": "^4.2.1",
     "vue-chartjs": "^5.3.3",
     "zod": "^4.3.6"
