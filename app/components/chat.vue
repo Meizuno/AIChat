@@ -231,9 +231,9 @@ function isAssistantThinking(message: { id: string, role: string }) {
 </script>
 
 <template>
-  <div ref="scrollContainer" class="h-screen overflow-y-auto">
+  <div ref="scrollContainer" class="h-screen overflow-y-auto flex flex-col">
     <!-- Header -->
-    <div class="sticky top-0 z-20 border-b border-default/50 bg-opacity-0 backdrop-blur">
+    <div class="sticky top-0 z-20 shrink-0 border-b border-default/50 bg-default/20 backdrop-blur-xl">
       <div class="flex items-center justify-between max-w-3xl mx-auto px-4 py-1">
       <!-- Brand -->
       <div class="flex items-center gap-2">
@@ -316,23 +316,18 @@ function isAssistantThinking(message: { id: string, role: string }) {
         </UPopover>
 
         <!-- User dropdown -->
-        <ClientOnly>
-          <UDropdownMenu :items="userMenuItems" :ui="{ content: 'w-56' }">
-            <UButton variant="ghost" color="neutral" size="sm" class="gap-1.5 px-2">
-              <UAvatar :src="user?.picture ?? undefined" :alt="user?.name ?? undefined" size="xs" />
-              <span class="text-xs font-medium hidden sm:block max-w-28 truncate">{{ user?.name }}</span>
-              <UIcon name="i-lucide-chevron-down" class="size-3 text-muted shrink-0" />
-            </UButton>
-          </UDropdownMenu>
-          <template #fallback>
-            <USkeleton class="h-9 w-14.5 rounded-lg" />
-          </template>
-        </ClientOnly>
+        <UDropdownMenu :items="userMenuItems" :ui="{ content: 'w-56' }">
+          <UButton variant="ghost" color="neutral" size="sm" class="gap-1.5 px-2">
+            <UAvatar :src="user?.picture ?? undefined" :alt="user?.name ?? undefined" size="xs" />
+            <span class="text-xs font-medium hidden sm:block max-w-28 truncate">{{ user?.name }}</span>
+            <UIcon name="i-lucide-chevron-down" class="size-3 text-muted shrink-0" />
+          </UButton>
+        </UDropdownMenu>
       </div>
       </div>
     </div>
 
-      <div class="min-h-[calc(100vh-8rem)] pt-4">
+      <div class="flex-1 pt-4">
         <div
           v-if="chat.messages.length === 0 && welcomeMessage"
           class="max-w-3xl mx-auto px-4 py-16 flex flex-col items-center gap-6"
@@ -412,7 +407,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
         </UChatMessages>
       </div>
 
-      <div class="sticky bottom-0 z-20 px-6 pb-6 pt-3 bg-opacity-0">
+      <div class="sticky bottom-0 z-20 shrink-0 p-6 bg-opacity-0">
         <div class="max-w-3xl mx-auto relative">
           <Transition name="usage">
             <div v-if="usage" class="absolute -top-6 right-1 flex items-center gap-3 text-xs text-muted">
@@ -421,23 +416,18 @@ function isAssistantThinking(message: { id: string, role: string }) {
               <span class="text-highlighted font-medium">{{ estimatedCost }}</span>
             </div>
           </Transition>
-          <ClientOnly>
-            <ChatPrompt
-              v-model="input"
-              :status="chat.status"
-              :error="chat.error"
-              :disabled="promptLoading"
-              :prompt-groups="promptGroups"
-              :has-messages="chat.messages.length > 0"
-              @submit="onSubmit"
-              @stop="chat.stop()"
-              @clear="chat.messages = []; usage = null"
-              @prompt="useSuggestedPrompt($event)"
-            />
-            <template #fallback>
-              <div class="rounded-2xl border border-default bg-default px-3 py-2 h-10" />
-            </template>
-          </ClientOnly>
+          <ChatPrompt
+            v-model="input"
+            :status="chat.status"
+            :error="chat.error"
+            :disabled="promptLoading"
+            :prompt-groups="promptGroups"
+            :has-messages="chat.messages.length > 0"
+            @submit="onSubmit"
+            @stop="chat.stop()"
+            @clear="chat.messages = []; usage = null"
+            @prompt="useSuggestedPrompt($event)"
+          />
         </div>
       </div>
   </div>

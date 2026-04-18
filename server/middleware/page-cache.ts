@@ -1,10 +1,11 @@
 const cache = new Map<string, string>()
+const isDev = process.env.NODE_ENV !== 'production'
 
 export default defineEventHandler(async (event) => {
   const path = event.path ?? ''
 
-  // Only cache page requests, not API/assets
-  if (path.startsWith('/api/') || path.includes('.')) return
+  // Only cache page requests in production, not API/assets
+  if (isDev || path.startsWith('/api/') || path.includes('.')) return
 
   const cached = cache.get(path)
 
