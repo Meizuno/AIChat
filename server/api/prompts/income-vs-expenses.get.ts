@@ -112,7 +112,8 @@ export default defineEventHandler(async (event) => {
   }))
 
   return {
-    title: `Income vs Expenses — ${periodLabel} | Income: ${totalIncome.toFixed(2)} | Spent: ${totalSpent.toFixed(2)} / ${totalAllocated.toFixed(2)} CZK (${totalPercent}%)`,
+    title: `Income vs Expenses — ${periodLabel}`,
+    subtitle: `Income: ${totalIncome.toFixed(2)} CZK | Spent: ${totalSpent.toFixed(2)} / ${totalAllocated.toFixed(2)} CZK (${totalPercent}%)`,
     navigation: { route: '/api/prompts/income-vs-expenses', month, year },
     type: 'bar',
     labels: expenseLabels.map((l, i) => `${l} (${percentSpent[i]}%)`),

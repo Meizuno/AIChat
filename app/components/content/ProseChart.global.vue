@@ -10,6 +10,7 @@ type ChartLegendGroup = { label: string, items: ChartLegendRow[] }
 type ChartNavigation = { route: string, month: number, year: number }
 type ChartPayload = {
   title?: string
+  subtitle?: string
   type?: ChartType
   labels: string[]
   datasets: ChartDataset[]
@@ -239,7 +240,10 @@ const chartOptions = computed(() => ({
             <p v-if="localPayload?.title" class="text-sm font-semibold text-slate-900 dark:text-slate-100">
               {{ localPayload.title }}
             </p>
-            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            <p v-if="localPayload?.subtitle" class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              {{ localPayload.subtitle }}
+            </p>
+            <p v-else class="mt-1 text-xs text-slate-500 dark:text-slate-400">
               Total: <span class="font-semibold text-slate-700 dark:text-slate-200">{{ total.toFixed(2) }}</span>
             </p>
           </div>
