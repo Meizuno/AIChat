@@ -37,11 +37,7 @@ const fetchMcpStatus = async () => {
   finally { mcpLoading.value = false }
 }
 
-onMounted(() => {
-  fetchMcpStatus()
-  const interval = setInterval(fetchMcpStatus, 120_000)
-  onUnmounted(() => clearInterval(interval))
-})
+onMounted(fetchMcpStatus)
 
 type PromptItem = { label: string, prompt?: string, route?: string }
 type PromptGroup = { server: string, prompts: PromptItem[] }
