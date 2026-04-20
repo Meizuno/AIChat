@@ -7,6 +7,7 @@ type RecipesPayload = {
   total: number
   hasMore: boolean
   activeTag?: string
+  activeSearch?: string
 }
 
 const TAILWIND_COLORS: Record<string, string> = {
@@ -29,10 +30,12 @@ const localData = ref<RecipesPayload | null>(parsed.value)
 watch(parsed, val => { localData.value = val })
 
 const activeTag = ref(parsed.value?.activeTag ?? '')
+const search = ref(parsed.value?.activeSearch ?? '')
 const recipes = ref<RecipeItem[]>(parsed.value?.recipes ?? [])
 const hasMore = ref(parsed.value?.hasMore ?? false)
 const total = ref(parsed.value?.total ?? 0)
 const loadingMore = ref(false)
+const searching = ref(false)
 
 const expandedId = ref<number | null>(null)
 const recipeContent = ref<Map<number, string>>(new Map())
@@ -51,20 +54,40 @@ const filteredRecipes = computed(() => {
   return recipes.value.filter(r => r.tags.includes(activeTag.value))
 })
 
-async function toggleTag(label: string) {
-  activeTag.value = activeTag.value === label ? '' : label
-  // Reload from server with tag filter
-  loadingMore.value = true
+function buildParams(offset: number) {
+  const q = search.value.trim()
+  return {
+    limit: 10,
+    offset,
+    ...(activeTag.value ? { tag: activeTag.value } : {}),
+    ...(q ? { search: q } : {})
+  }
+}
+
+let reloadSeq = 0
+
+async function reload() {
+  const mySeq = ++reloadSeq
+  searching.value = true
   try {
-    const data = await $fetch<RecipesPayload>('/api/prompts/recipes', {
-      params: { limit: 10, offset: 0, ...(activeTag.value ? { tag: activeTag.value } : {}) }
-    })
+    const data = await $fetch<RecipesPayload>('/api/prompts/recipes', { params: buildParams(0) })
+    if (mySeq !== reloadSeq) return
     recipes.value = data.recipes
     hasMore.value = data.hasMore
     total.value = data.total
+    expandedId.value = null
   }
-  catch { /* ignore */ }
-  finally { loadingMore.value = false }
+  catch (err) {
+    if (mySeq === reloadSeq) console.warn('[recipes] search failed:', err)
+  }
+  finally {
+    if (mySeq === reloadSeq) searching.value = false
+  }
+}
+
+async function toggleTag(label: string) {
+  activeTag.value = activeTag.value === label ? '' : label
+  await reload()
 }
 
 async function loadMore() {
@@ -72,19 +95,31 @@ async function loadMore() {
   loadingMore.value = true
   try {
     const data = await $fetch<RecipesPayload>('/api/prompts/recipes', {
-      params: {
-        limit: 10,
-        offset: recipes.value.length,
-        ...(activeTag.value ? { tag: activeTag.value } : {})
-      }
+      params: buildParams(recipes.value.length)
     })
     recipes.value = [...recipes.value, ...data.recipes]
     hasMore.value = data.hasMore
     total.value = data.total
   }
-  catch { /* ignore */ }
+  catch (err) { console.warn('[recipes] load-more failed:', err) }
   finally { loadingMore.value = false }
 }
+
+const SEARCH_DEBOUNCE_MS = 500
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+watch(search, (val, oldVal) => {
+  if ((val ?? '').trim() === (oldVal ?? '').trim()) return
+  if (searchTimer) clearTimeout(searchTimer)
+  searching.value = true
+  searchTimer = setTimeout(() => {
+    searchTimer = null
+    reload()
+  }, SEARCH_DEBOUNCE_MS)
+})
+
+onBeforeUnmount(() => {
+  if (searchTimer) clearTimeout(searchTimer)
+})
 
 async function toggleRecipe(recipe: RecipeItem) {
   if (expandedId.value === recipe.id) {
@@ -121,7 +156,24 @@ const { onEnter: onExpandEnter, onAfterEnter: onExpandAfterEnter, onLeave: onExp
       <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
         {{ total }} recipe{{ total === 1 ? '' : 's' }}
         <template v-if="activeTag"> tagged <span class="font-medium text-slate-700 dark:text-slate-200">{{ activeTag }}</span></template>
+        <template v-if="search"> matching <span class="font-medium text-slate-700 dark:text-slate-200">"{{ search }}"</span></template>
       </p>
+    </div>
+
+    <!-- Search -->
+    <div class="relative mb-3">
+      <UIcon name="i-lucide-search" class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+      <input
+        v-model="search"
+        type="search"
+        placeholder="Search title or content…"
+        class="w-full rounded-lg border border-slate-200/70 bg-white/70 py-2 pl-9 pr-8 text-xs text-slate-700 placeholder:text-slate-400 focus:border-slate-300 focus:outline-none dark:border-slate-700/60 dark:bg-slate-900/50 dark:text-slate-200"
+      >
+      <UIcon
+        v-if="searching"
+        name="i-lucide-loader-2"
+        class="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-slate-400"
+      />
     </div>
 
     <!-- Tag filters -->
@@ -205,8 +257,8 @@ const { onEnter: onExpandEnter, onAfterEnter: onExpandAfterEnter, onLeave: onExp
     </button>
 
     <!-- Empty state -->
-    <p v-if="!filteredRecipes.length && !loadingMore" class="text-sm text-slate-400 text-center py-6">
-      No recipes found{{ activeTag ? ` for "${activeTag}"` : '' }}
+    <p v-if="!filteredRecipes.length && !loadingMore && !searching" class="text-sm text-slate-400 text-center py-6">
+      No recipes found<template v-if="search"> matching "{{ search }}"</template><template v-if="activeTag"> tagged "{{ activeTag }}"</template>
     </p>
   </div>
 </template>

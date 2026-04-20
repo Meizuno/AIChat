@@ -4,6 +4,7 @@ export default defineEventHandler(async (event) => {
   return fetchPrompt(event, 'Recipes Book', '/api/prompts/recipes', {
     id: query.id,
     tag: query.tag,
+    search: query.search,
     limit: query.limit,
     offset: query.offset
   })
