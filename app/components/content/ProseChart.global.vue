@@ -5,7 +5,7 @@ import { Bar, Pie } from 'vue-chartjs'
 type ChartType = 'bar' | 'pie'
 type ChartDataset = { label: string, data: number[], backgroundColor?: string | string[] }
 type TransactionItem = { id: number, date: string, name: string, amount: number }
-type ChartLegendRow = { label: string, value: number, percent: number, color: string, transactions?: TransactionItem[] }
+type ChartLegendRow = { label: string, value: number, allocated?: number, percent: number, color: string, transactions?: TransactionItem[] }
 type ChartLegendGroup = { label: string, items: ChartLegendRow[] }
 type ChartNavigation = { route: string, month: number, year: number }
 type ChartPayload = {
@@ -302,7 +302,11 @@ const chartOptions = computed(() => ({
                 >
                   <span class="h-2.5 w-2.5 shrink-0 rounded-full" :style="{ backgroundColor: item.color }" />
                   <span class="flex-1 text-xs font-medium text-slate-700 dark:text-slate-200">{{ item.label }}</span>
-                  <span class="text-xs text-slate-500 dark:text-slate-400">{{ item.value }} ({{ item.percent }}%)</span>
+                  <span class="text-xs text-slate-500 dark:text-slate-400">
+                  {{ item.value }}
+                  <template v-if="item.allocated"> / {{ item.allocated }}</template>
+                  ({{ item.percent }}%)
+                </span>
                   <UIcon
                     v-if="item.transactions?.length"
                     :name="expandedCategories.has(`${group.label}:${item.label}`) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
