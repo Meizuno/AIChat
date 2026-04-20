@@ -15,6 +15,10 @@ export type AppConfig = {
     botName: string
     welcomeMessage: string
   }
+  pricing?: {
+    inputPerMillion: number
+    outputPerMillion: number
+  }
 }
 
 export function getConfig(): AppConfig {

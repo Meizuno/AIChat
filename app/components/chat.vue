@@ -10,7 +10,6 @@ function normalizeMarkdownForMdc(value: string) {
 
 const { user, logout } = useAuth()
 const input = ref('')
-const MCP_DISPLAY_NAME = 'Money Manager'
 
 type ServerStatus = { name: string, connected: boolean, toolCount: number, tools: string[] }
 type McpStatus = { connected: boolean, toolCount: number, tools: string[], servers: ServerStatus[] }
@@ -31,8 +30,9 @@ const fetchMcpStatus = async () => {
   try {
     mcpStatus.value = await $fetch<McpStatus>('/api/mcp-status')
   }
-  catch {
-    mcpStatus.value = { connected: false, toolCount: 0, tools: [] }
+  catch (err) {
+    console.warn('[MCP Status]', err)
+    mcpStatus.value = { connected: false, toolCount: 0, tools: [], servers: [] }
   }
   finally { mcpLoading.value = false }
 }
@@ -41,7 +41,8 @@ onMounted(fetchMcpStatus)
 
 type PromptItem = { label: string, prompt?: string, route?: string }
 type PromptGroup = { server: string, prompts: PromptItem[] }
-type AppConfig = { defaults: { welcomeMessage: string, botName: string }, promptGroups: PromptGroup[] }
+type Pricing = { inputPerMillion: number, outputPerMillion: number }
+type AppConfig = { defaults: { welcomeMessage: string, botName: string }, promptGroups: PromptGroup[], pricing?: Pricing }
 
 const { data: appConfig } = await useFetch<AppConfig>('/api/config', { key: 'app-config' })
 
@@ -87,7 +88,8 @@ async function useSuggestedPrompt(item: { label: string, prompt?: string, route?
       )
       scrollAfterRender()
     }
-    catch {
+    catch (err) {
+      console.warn('[Suggested Prompt]', err)
       chat.messages = chat.messages.filter(m => m.id !== assistantId && m.id !== userId)
     }
     finally {
@@ -103,13 +105,13 @@ async function useSuggestedPrompt(item: { label: string, prompt?: string, route?
 const usage = ref<{ inputTokens: number, outputTokens: number, totalTokens: number } | null>(null)
 const copiedMessageId = ref<string | null>(null)
 
-const PRICE_INPUT = 2.50
-const PRICE_OUTPUT = 10.00
-
 const estimatedCost = computed(() => {
   if (!usage.value) return null
-  const cost = ((usage.value.inputTokens ?? 0) / 1_000_000) * PRICE_INPUT
-    + ((usage.value.outputTokens ?? 0) / 1_000_000) * PRICE_OUTPUT
+  const pricing = appConfig.value?.pricing
+  const inputPrice = pricing?.inputPerMillion ?? 0.20
+  const outputPrice = pricing?.outputPerMillion ?? 1.25
+  const cost = ((usage.value.inputTokens ?? 0) / 1_000_000) * inputPrice
+    + ((usage.value.outputTokens ?? 0) / 1_000_000) * outputPrice
   return cost < 0.01 ? '< $0.01' : `$${cost.toFixed(4)}`
 })
 
@@ -384,7 +386,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
               />
               <UBadge
                 v-else-if="message.role === 'assistant' && message.parts.some(p => isToolUIPart(p))"
-                :label="MCP_DISPLAY_NAME"
+                label="MCP"
                 color="success"
                 variant="subtle"
                 size="sm"

@@ -1,3 +1,4 @@
+const MAX_CACHE_SIZE = 20
 const cache = new Map<string, string>()
 const isDev = process.env.NODE_ENV !== 'production'
 
@@ -23,7 +24,7 @@ export default defineEventHandler(async (event) => {
   event.node.res.end = function (chunk?: any, ...args: any[]) {
     if (chunk) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
     const html = Buffer.concat(chunks).toString('utf-8')
-    if (event.node.res.statusCode === 200 && html.length > 0) {
+    if (event.node.res.statusCode === 200 && html.length > 0 && cache.size < MAX_CACHE_SIZE) {
       cache.set(path, html)
     }
     return originalEnd(chunk, ...args)

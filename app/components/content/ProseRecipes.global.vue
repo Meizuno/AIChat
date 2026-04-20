@@ -105,36 +105,7 @@ async function toggleRecipe(recipe: RecipeItem) {
   }
 }
 
-function onExpandEnter(el: Element) {
-  const e = el as HTMLElement
-  e.style.height = '0'
-  e.style.opacity = '0'
-  e.style.overflow = 'hidden'
-  requestAnimationFrame(() => {
-    e.style.transition = 'height 0.2s ease, opacity 0.2s ease'
-    e.style.height = e.scrollHeight + 'px'
-    e.style.opacity = '1'
-  })
-}
-
-function onExpandAfterEnter(el: Element) {
-  const e = el as HTMLElement
-  e.style.height = ''
-  e.style.overflow = ''
-  e.style.transition = ''
-  e.style.opacity = ''
-}
-
-function onExpandLeave(el: Element) {
-  const e = el as HTMLElement
-  e.style.height = e.scrollHeight + 'px'
-  e.style.overflow = 'hidden'
-  requestAnimationFrame(() => {
-    e.style.transition = 'height 0.15s ease, opacity 0.15s ease'
-    e.style.height = '0'
-    e.style.opacity = '0'
-  })
-}
+const { onEnter: onExpandEnter, onAfterEnter: onExpandAfterEnter, onLeave: onExpandLeave } = useExpandAnimation()
 </script>
 
 <template>

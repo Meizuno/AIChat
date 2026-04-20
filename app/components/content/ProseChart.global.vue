@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// @ts-nocheck
+// @ts-expect-error vue-chartjs types incompatible with strict mode
 import { Bar, Pie } from 'vue-chartjs'
 
 type ChartType = 'bar' | 'pie'
@@ -95,36 +95,7 @@ function toggleCategory(label: string) {
   expandedCategories.value = next
 }
 
-function onExpandEnter(el: Element) {
-  const e = el as HTMLElement
-  e.style.height = '0'
-  e.style.opacity = '0'
-  e.style.overflow = 'hidden'
-  requestAnimationFrame(() => {
-    e.style.transition = 'height 0.2s ease, opacity 0.2s ease'
-    e.style.height = e.scrollHeight + 'px'
-    e.style.opacity = '1'
-  })
-}
-
-function onExpandAfterEnter(el: Element) {
-  const e = el as HTMLElement
-  e.style.height = ''
-  e.style.overflow = ''
-  e.style.transition = ''
-  e.style.opacity = ''
-}
-
-function onExpandLeave(el: Element) {
-  const e = el as HTMLElement
-  e.style.height = e.scrollHeight + 'px'
-  e.style.overflow = 'hidden'
-  requestAnimationFrame(() => {
-    e.style.transition = 'height 0.15s ease, opacity 0.15s ease'
-    e.style.height = '0'
-    e.style.opacity = '0'
-  })
-}
+const { onEnter: onExpandEnter, onAfterEnter: onExpandAfterEnter, onLeave: onExpandLeave } = useExpandAnimation()
 
 const DEFAULT_COLORS = [
   '#0ea5e9', '#14b8a6', '#84cc16', '#f59e0b',

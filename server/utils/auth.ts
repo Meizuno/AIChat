@@ -34,8 +34,8 @@ function readCookie(event: H3Event, name: string): string | null {
   return match?.[1] ?? null
 }
 
-// Stores refreshed token per SSR render so internal API calls can use it
-let ssrRefreshedToken: string | null = null
+// Maps old refresh token → new access token for SSR internal fetch dedup
+const refreshedTokens = new Map<string, string>()
 
 /**
  * Authenticate the request. Checks access token first, then tries refresh.
@@ -47,7 +47,10 @@ export async function authenticate(event: H3Event): Promise<AuthUser | null> {
   const header = getHeader(event, 'authorization')
   const accessToken = header?.toLowerCase().startsWith('bearer ')
     ? header.slice(7).trim()
-    : (readCookie(event, 'aic_access') ?? ssrRefreshedToken ?? '')
+    : (readCookie(event, 'aic_access') ?? (() => {
+        const rt = readCookie(event, 'aic_refresh')
+        return rt ? (refreshedTokens.get(rt) ?? '') : ''
+      })())
 
   const userId = await validateToken(accessToken)
   if (userId) {
@@ -68,8 +71,8 @@ export async function authenticate(event: H3Event): Promise<AuthUser | null> {
     )
 
     setAuthCookies(event, result.access_token, result.refresh_token)
-    ssrRefreshedToken = result.access_token
-    setTimeout(() => { ssrRefreshedToken = null }, 5_000)
+    refreshedTokens.set(refreshToken, result.access_token)
+    setTimeout(() => refreshedTokens.delete(refreshToken), 5_000)
 
     const newUserId = await validateToken(result.access_token)
     if (!newUserId) return null

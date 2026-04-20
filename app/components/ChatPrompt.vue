@@ -75,8 +75,8 @@ async function toggleRecording() {
         body: formData,
       });
       input.value = result.text;
-    } catch {
-      /* ignore */
+    } catch (err) {
+      console.warn('[Transcribe]', err)
     } finally {
       isTranscribing.value = false;
     }
