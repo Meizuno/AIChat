@@ -97,6 +97,10 @@ function toggleCategory(label: string) {
 
 const { onEnter: onExpandEnter, onAfterEnter: onExpandAfterEnter, onLeave: onExpandLeave } = useExpandAnimation()
 
+function fmt(n: number) {
+  return n.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 const DEFAULT_COLORS = [
   '#0ea5e9', '#14b8a6', '#84cc16', '#f59e0b',
   '#f97316', '#ef4444', '#ec4899', '#8b5cf6'
@@ -215,7 +219,7 @@ const chartOptions = computed(() => ({
               {{ localPayload.subtitle }}
             </p>
             <p v-else class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Total: <span class="font-semibold text-slate-700 dark:text-slate-200">{{ total.toFixed(2) }}</span>
+              Total: <span class="font-semibold text-slate-700 dark:text-slate-200">{{ fmt(total) }}</span>
             </p>
           </div>
           <div class="flex shrink-0 flex-col items-end gap-1.5">
@@ -274,8 +278,8 @@ const chartOptions = computed(() => ({
                   <span class="h-2.5 w-2.5 shrink-0 rounded-full" :style="{ backgroundColor: item.color }" />
                   <span class="flex-1 text-xs font-medium text-slate-700 dark:text-slate-200">{{ item.label }}</span>
                   <span class="text-xs text-slate-500 dark:text-slate-400">
-                  {{ item.value }}
-                  <template v-if="item.allocated"> / {{ item.allocated }}</template>
+                  {{ fmt(item.value) }}
+                  <template v-if="item.allocated"> / {{ fmt(item.allocated) }}</template>
                   ({{ item.percent }}%)
                 </span>
                   <UIcon
@@ -308,7 +312,7 @@ const chartOptions = computed(() => ({
                     >
                       <span class="shrink-0 text-slate-400 dark:text-slate-500">{{ tx.date }}</span>
                       <span class="flex-1 truncate">{{ tx.name }}</span>
-                      <span class="shrink-0 font-medium text-slate-700 dark:text-slate-300">{{ tx.amount }} CZK</span>
+                      <span class="shrink-0 font-medium text-slate-700 dark:text-slate-300">{{ fmt(tx.amount) }} CZK</span>
                     </div>
                   </div>
                 </Transition>
