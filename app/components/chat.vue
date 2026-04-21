@@ -57,23 +57,24 @@ async function useSuggestedPrompt(item: { label: string, prompt?: string, route?
   if (item.route) {
     promptLoading.value = true
     const userId = crypto.randomUUID()
-    const assistantId = crypto.randomUUID()
+    const placeholderId = crypto.randomUUID()
 
-    // Show user message immediately
-    chat.messages = [...chat.messages, {
-      id: userId,
-      role: 'user',
-      parts: [{ type: 'text' as const, text: item.label }],
-      metadata: undefined
-    }]
-
-    // Show loading assistant message
-    chat.messages = [...chat.messages, {
-      id: assistantId,
-      role: 'assistant',
-      parts: [{ type: 'text' as const, text: '' }],
-      metadata: undefined
-    }]
+    // Add user + loading assistant placeholder in a single assignment
+    chat.messages = [
+      ...chat.messages,
+      {
+        id: userId,
+        role: 'user',
+        parts: [{ type: 'text' as const, text: item.label }],
+        metadata: undefined
+      },
+      {
+        id: placeholderId,
+        role: 'assistant',
+        parts: [{ type: 'text' as const, text: '' }],
+        metadata: undefined
+      }
+    ]
 
     try {
       const data = await $fetch<Record<string, unknown>>(item.route)
@@ -81,16 +82,24 @@ async function useSuggestedPrompt(item: { label: string, prompt?: string, route?
       const text = typeof data.text === 'string'
         ? data.text
         : '```' + blockType + '\n' + JSON.stringify(data) + '\n```'
-      chat.messages = chat.messages.map(m =>
-        m.id === assistantId
-          ? { ...m, parts: [{ type: 'text' as const, text }] }
-          : m
-      )
+
+      // Replace placeholder with a *new* message id so Vue remounts MDC
+      // (reusing the same id lets MDC's async compile cache overwrite the
+      // populated content with the stale empty one on fast responses).
+      chat.messages = [
+        ...chat.messages.filter(m => m.id !== placeholderId),
+        {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          parts: [{ type: 'text' as const, text }],
+          metadata: undefined
+        }
+      ]
       scrollAfterRender()
     }
     catch (err) {
       console.warn('[Suggested Prompt]', err)
-      chat.messages = chat.messages.filter(m => m.id !== assistantId && m.id !== userId)
+      chat.messages = chat.messages.filter(m => m.id !== placeholderId && m.id !== userId)
     }
     finally {
       promptLoading.value = false
