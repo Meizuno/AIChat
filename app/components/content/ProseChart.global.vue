@@ -3,56 +3,194 @@
 import { Bar, Pie } from 'vue-chartjs'
 
 type ChartType = 'bar' | 'pie'
-type ChartDataset = { label: string, data: number[], backgroundColor?: string | string[] }
-type TransactionItem = { id: number, date: string, name: string, amount: number }
-type ChartLegendRow = { label: string, value: number, allocated?: number, percent: number, color: string, transactions?: TransactionItem[] }
-type ChartLegendGroup = { label: string, items: ChartLegendRow[] }
-type ChartNavigation = { route: string, month: number, year: number }
-type ChartPayload = {
-  title?: string
-  subtitle?: string
-  type?: ChartType
-  labels: string[]
-  datasets: ChartDataset[]
-  legend?: ChartLegendRow[]
-  legendGroups?: ChartLegendGroup[]
-  navigation?: ChartNavigation
+type TxRow = { id: number, date: string, name: string, amount: number, currency: string, category: number }
+type ExpenseCat = { id: number, label: string, color: string, percent: number, position: number }
+type IncomeCat = { id: number, label: string, color: string, position: number }
+type FinancePayload = {
+  expenses: TxRow[]
+  incomes: TxRow[]
+  expenseCategories: ExpenseCat[]
+  incomeCategories: IncomeCat[]
 }
+
+type LegendItem = { label: string, value: number, allocated?: number, percent: number, color: string, transactions: TxRow[] }
+type LegendGroup = { label: string, items: LegendItem[] }
+
+const TAILWIND_COLORS: Record<string, string> = {
+  cyan: '#06b6d4', violet: '#8b5cf6', amber: '#f59e0b', emerald: '#10b981',
+  rose: '#f43f5e', sky: '#0ea5e9', indigo: '#6366f1', pink: '#ec4899',
+  orange: '#f97316', teal: '#14b8a6', lime: '#84cc16', red: '#ef4444',
+  green: '#22c55e', blue: '#3b82f6', purple: '#a855f7', yellow: '#eab308',
+  gray: '#94a3b8', slate: '#94a3b8'
+}
+
+const FINANCE_ROUTE = '/api/prompts/finance'
+const MONTH_NAV_START = new Date(2026, 0, 1) // January 2026
 
 const props = defineProps({
   code: { type: String, required: true }
 })
 
 const parsed = computed(() => {
-  try {
-    return JSON.parse(props.code.trim()) as ChartPayload
+  try { return JSON.parse(props.code.trim()) as FinancePayload }
+  catch { return null }
+})
+
+const localPayload = ref<FinancePayload | null>(parsed.value)
+watch(parsed, val => { localPayload.value = val })
+
+// Server no longer echoes period — default to current month/year; picker updates this.
+const _now = new Date()
+const currentNav = ref<{ month: number, year: number }>({ month: _now.getMonth() + 1, year: _now.getFullYear() })
+
+const activeType = ref<ChartType>('bar')
+const navLoading = ref(false)
+const expandedCategories = ref<Set<string>>(new Set())
+
+const round2 = (n: number) => Math.round(n * 100) / 100
+const fmt = (n: number) => n.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+// --- CZK-only transaction views (non-CZK ignored) ---
+const czkExpenses = computed(() => (localPayload.value?.expenses ?? []).filter(e => e.currency === 'CZK'))
+const czkIncomes = computed(() => (localPayload.value?.incomes ?? []).filter(i => i.currency === 'CZK'))
+
+const incomeCatById = computed(() => new Map((localPayload.value?.incomeCategories ?? []).map(c => [c.id, c])))
+
+// --- Income aggregation ---
+const totalIncome = computed(() => round2(czkIncomes.value.reduce((s, i) => s + i.amount, 0)))
+
+const incomeLegend = computed<LegendItem[]>(() => {
+  const byLabel = new Map<string, { total: number, color: string, txs: TxRow[] }>()
+  for (const tx of czkIncomes.value) {
+    const cat = incomeCatById.value.get(tx.category)
+    const label = cat?.label ?? 'Other'
+    const color = cat ? (TAILWIND_COLORS[cat.color] ?? '#94a3b8') : '#94a3b8'
+    const entry = byLabel.get(label) ?? { total: 0, color, txs: [] }
+    entry.total += tx.amount
+    entry.txs.push(tx)
+    byLabel.set(label, entry)
   }
-  catch {
-    return null
+  return [...byLabel.entries()]
+    .sort((a, b) => b[1].total - a[1].total)
+    .map(([label, { total, color, txs }]) => ({
+      label,
+      value: round2(total),
+      percent: totalIncome.value > 0 ? Math.round(total / totalIncome.value * 100) : 0,
+      color,
+      transactions: [...txs].sort((a, b) => b.date.localeCompare(a.date))
+    }))
+})
+
+// --- Expense aggregation ---
+type ExpenseRow = {
+  label: string
+  allocated: number
+  spent: number
+  percent: number
+  color: string
+  transactions: TxRow[]
+}
+
+const expenseRows = computed<ExpenseRow[]>(() => {
+  const cats = localPayload.value?.expenseCategories ?? []
+  const txByCat = new Map<number, TxRow[]>()
+  for (const tx of czkExpenses.value) {
+    const list = txByCat.get(tx.category) ?? []
+    list.push(tx)
+    txByCat.set(tx.category, list)
+  }
+  const rows: ExpenseRow[] = cats.map((c) => {
+    const txs = txByCat.get(c.id) ?? []
+    const spent = txs.reduce((s, t) => s + t.amount, 0)
+    const allocated = round2(totalIncome.value * c.percent / 100)
+    return {
+      label: c.label,
+      allocated,
+      spent: round2(spent),
+      percent: allocated > 0 ? Math.round(spent / allocated * 100) : 0,
+      color: TAILWIND_COLORS[c.color] ?? '#94a3b8',
+      transactions: [...txs].sort((a, b) => b.date.localeCompare(a.date))
+    }
+  })
+  const knownIds = new Set(cats.map(c => c.id))
+  const orphans: TxRow[] = []
+  for (const [catId, txs] of txByCat.entries()) {
+    if (!knownIds.has(catId)) orphans.push(...txs)
+  }
+  if (orphans.length) {
+    rows.push({
+      label: 'Other',
+      allocated: 0,
+      spent: round2(orphans.reduce((s, t) => s + t.amount, 0)),
+      percent: 0,
+      color: '#94a3b8',
+      transactions: [...orphans].sort((a, b) => b.date.localeCompare(a.date))
+    })
+  }
+  return rows.sort((a, b) => b.allocated - a.allocated)
+})
+
+const totalAllocated = computed(() => round2(expenseRows.value.reduce((s, e) => s + e.allocated, 0)))
+const totalSpent = computed(() => round2(expenseRows.value.reduce((s, e) => s + e.spent, 0)))
+const totalPercent = computed(() => totalAllocated.value > 0 ? Math.round(totalSpent.value / totalAllocated.value * 100) : 0)
+const totalAllocatedPercent = computed(() => (localPayload.value?.expenseCategories ?? []).reduce((s, c) => s + c.percent, 0))
+
+const netBalance = computed(() => round2(totalIncome.value - totalSpent.value))
+
+// --- Title / subtitle (computed, no server strings) ---
+const periodLabel = computed(() => {
+  const { month, year } = currentNav.value
+  if (month === 0) return String(year)
+  return new Date(year, month - 1).toLocaleString('en', { month: 'long', year: 'numeric' })
+})
+
+const title = computed(() => `Financial overview — ${periodLabel.value}`)
+const subtitle = computed(() =>
+  `Income: ${fmt(totalIncome.value)} CZK | Spent: ${fmt(totalSpent.value)} / ${fmt(totalAllocated.value)} CZK (${totalPercent.value}%) | Allocated: ${totalAllocatedPercent.value}%`
+)
+
+// --- Legend + chart data ---
+const legendGroupsNormalized = computed<LegendGroup[]>(() => {
+  const groups: LegendGroup[] = []
+  const expenseItems: LegendItem[] = expenseRows.value.map(e => ({
+    label: e.label,
+    value: e.spent,
+    allocated: e.allocated,
+    percent: e.percent,
+    color: e.color,
+    transactions: e.transactions
+  }))
+  if (expenseItems.length) groups.push({ label: 'Expenses', items: expenseItems })
+  if (incomeLegend.value.length) groups.push({ label: 'Income', items: incomeLegend.value })
+  return groups
+})
+
+const chartData = computed(() => {
+  const items = expenseRows.value
+  if (!items.length) return null
+  const colors = items.map(e => e.color)
+  const common = {
+    borderColor: activeType.value === 'bar' ? 'rgba(255,255,255,0.75)' : undefined,
+    borderWidth: activeType.value === 'bar' ? 1.5 : 0,
+    hoverBorderWidth: activeType.value === 'bar' ? 1.5 : 0,
+    borderRadius: activeType.value === 'bar' ? 10 : undefined
+  }
+  return {
+    labels: items.map(e => `${e.label} (${e.percent}%)`),
+    datasets: [
+      { label: 'Allocated (CZK)', data: items.map(e => e.allocated), backgroundColor: colors.map(c => c + '80'), ...common },
+      { label: 'Spent (CZK)',     data: items.map(e => e.spent),     backgroundColor: colors, ...common }
+    ]
   }
 })
 
-const localPayload = ref<ChartPayload | null>(parsed.value)
-watch(parsed, val => { localPayload.value = val })
-
-const activeType = ref<ChartType>(parsed.value?.type === 'bar' ? 'bar' : 'pie')
-
-const navLoading = ref(false)
-
-const MONTH_NAV_START = new Date(2026, 0, 1) // January 2026
-
+// --- Month picker ---
 const monthOptions = computed(() => {
-  const nav = localPayload.value?.navigation
-  if (!nav) return []
   const now = new Date()
-
-  // Year entries (current year down to start year)
   const yearOpts: { label: string, value: string }[] = []
   for (let y = now.getFullYear(); y >= MONTH_NAV_START.getFullYear(); y--) {
     yearOpts.push({ label: `${y} — Full year`, value: `${y}-0` })
   }
-
-  // Month entries (current month down to Jan 2026)
   const monthOpts: { label: string, value: string }[] = []
   let d = new Date(now.getFullYear(), now.getMonth(), 1)
   while (d >= MONTH_NAV_START) {
@@ -64,30 +202,23 @@ const monthOptions = computed(() => {
     })
     d = new Date(y, d.getMonth() - 1, 1)
   }
-
   return [...yearOpts, ...monthOpts]
 })
 
-const selectedMonth = computed(() => {
-  const nav = localPayload.value?.navigation
-  return nav ? `${nav.year}-${nav.month}` : ''
-})
+const selectedMonth = computed(() => `${currentNav.value.year}-${currentNav.value.month}`)
 
 async function navigateToMonth(value: string) {
-  const nav = localPayload.value?.navigation
-  if (!nav || navLoading.value) return
+  if (navLoading.value) return
   const [year, month] = value.split('-').map(Number)
   navLoading.value = true
   try {
-    const data = await $fetch<ChartPayload>(nav.route, { params: { month, year } })
+    const data = await $fetch<FinancePayload>(FINANCE_ROUTE, { params: { month, year } })
     localPayload.value = data
+    currentNav.value = { month, year }
     expandedCategories.value = new Set()
   }
-  finally {
-    navLoading.value = false
-  }
+  finally { navLoading.value = false }
 }
-const expandedCategories = ref<Set<string>>(new Set())
 
 function toggleCategory(label: string) {
   const next = new Set(expandedCategories.value)
@@ -97,58 +228,7 @@ function toggleCategory(label: string) {
 
 const { onEnter: onExpandEnter, onAfterEnter: onExpandAfterEnter, onLeave: onExpandLeave } = useExpandAnimation()
 
-function fmt(n: number) {
-  return n.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-const DEFAULT_COLORS = [
-  '#0ea5e9', '#14b8a6', '#84cc16', '#f59e0b',
-  '#f97316', '#ef4444', '#ec4899', '#8b5cf6'
-]
-
-const primaryDataset = computed(() => localPayload.value?.datasets?.[0] ?? null)
-const total = computed(() => (primaryDataset.value?.data.reduce((sum, value) => sum + Math.round(value * 100), 0) ?? 0) / 100)
-
-const legendRows = computed(() => {
-  if (!localPayload.value) return []
-  if (localPayload.value.legend) return localPayload.value.legend
-  if (!primaryDataset.value) return []
-  return localPayload.value.labels.map((label, index) => {
-    const value = primaryDataset.value?.data[index] ?? 0
-    const percent = total.value > 0 ? Math.round((value / total.value) * 100) : 0
-    return {
-      label,
-      value,
-      percent,
-      color: DEFAULT_COLORS[index % DEFAULT_COLORS.length]
-    }
-  })
-})
-
-const legendGroupsNormalized = computed<ChartLegendGroup[]>(() => {
-  if (!localPayload.value) return []
-  if (localPayload.value.legendGroups?.length) return localPayload.value.legendGroups
-  const rows = legendRows.value
-  return rows.length ? [{ label: '', items: rows }] : []
-})
-
-const chartData = computed(() => {
-  if (!localPayload.value) return null
-  const datasets = localPayload.value.datasets.map((ds, i) => ({
-    ...ds,
-    backgroundColor: ds.backgroundColor ?? (
-      activeType.value === 'pie' || i === 0
-        ? localPayload.value!.labels.map((_, j) => DEFAULT_COLORS[j % DEFAULT_COLORS.length])
-        : DEFAULT_COLORS[i % DEFAULT_COLORS.length]
-    ),
-    borderColor: activeType.value === 'bar' ? 'rgba(255,255,255,0.75)' : undefined,
-    borderWidth: activeType.value === 'bar' ? 1.5 : 0,
-    hoverBorderWidth: activeType.value === 'bar' ? 1.5 : 0,
-    borderRadius: activeType.value === 'bar' ? 10 : undefined
-  }))
-  return { labels: localPayload.value.labels, datasets }
-})
-
+// --- Chart.js options ---
 const staticOptions = {
   responsive: true,
   maintainAspectRatio: false,
@@ -170,17 +250,8 @@ const staticOptions = {
 
 const barScales = {
   scales: {
-    y: {
-      beginAtZero: true,
-      grid: { color: 'rgba(148,163,184,0.16)' },
-      border: { display: false },
-      ticks: { color: '#64748b' }
-    },
-    x: {
-      grid: { display: false },
-      border: { display: false },
-      ticks: { color: '#475569' }
-    }
+    y: { beginAtZero: true, grid: { color: 'rgba(148,163,184,0.16)' }, border: { display: false }, ticks: { color: '#64748b' } },
+    x: { grid: { display: false }, border: { display: false }, ticks: { color: '#475569' } }
   }
 }
 
@@ -212,14 +283,11 @@ const chartOptions = computed(() => ({
       <template v-if="chartData">
         <div class="mb-4 flex items-start justify-between gap-3">
           <div class="min-w-0 flex-1">
-            <p v-if="localPayload?.title" class="text-sm font-semibold text-slate-900 dark:text-slate-100">
-              {{ localPayload.title }}
+            <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              {{ title }}
             </p>
-            <p v-if="localPayload?.subtitle" class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-              {{ localPayload.subtitle }}
-            </p>
-            <p v-else class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Total: <span class="font-semibold text-slate-700 dark:text-slate-200">{{ fmt(total) }}</span>
+            <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              {{ subtitle }}
             </p>
           </div>
           <div class="flex shrink-0 flex-col items-end gap-1.5">
@@ -241,7 +309,7 @@ const chartOptions = computed(() => ({
                 @click="activeType = 'pie'"
               />
             </div>
-            <div v-if="localPayload?.navigation" class="rounded-xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
+            <div class="rounded-xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
               <USelect
                 :model-value="selectedMonth"
                 :items="monthOptions"
@@ -259,6 +327,34 @@ const chartOptions = computed(() => ({
           <Bar v-if="activeType === 'bar'" :data="chartData" :options="chartOptions" />
           <Pie v-else :data="chartData" :options="chartOptions" />
         </div>
+        <div
+          v-if="totalIncome > 0 || totalSpent > 0"
+          class="mt-4 flex items-center justify-between gap-3 rounded-lg border px-3 py-1.5"
+          :class="netBalance >= 0
+            ? 'border-emerald-400/30 bg-emerald-500/10'
+            : 'border-rose-400/30 bg-rose-500/10'"
+        >
+          <div class="flex items-center gap-1.5">
+            <UIcon
+              :name="netBalance >= 0 ? 'i-lucide-trending-up' : 'i-lucide-trending-down'"
+              class="h-3.5 w-3.5"
+              :class="netBalance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'"
+            />
+            <span
+              class="text-[11px] font-medium"
+              :class="netBalance >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'"
+            >
+              {{ netBalance >= 0 ? 'Left this period' : 'Over income' }}
+            </span>
+          </div>
+          <span
+            class="text-xs font-semibold"
+            :class="netBalance >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'"
+          >
+            {{ netBalance >= 0 ? '+' : '−' }}{{ fmt(Math.abs(netBalance)) }} CZK
+          </span>
+        </div>
+
         <div v-if="legendGroupsNormalized.length" class="mt-4 space-y-4">
           <div v-for="group in legendGroupsNormalized" :key="group.label">
             <p v-if="group.label" class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -278,10 +374,10 @@ const chartOptions = computed(() => ({
                   <span class="h-2.5 w-2.5 shrink-0 rounded-full" :style="{ backgroundColor: item.color }" />
                   <span class="flex-1 text-xs font-medium text-slate-700 dark:text-slate-200">{{ item.label }}</span>
                   <span class="text-xs text-slate-500 dark:text-slate-400">
-                  {{ fmt(item.value) }}
-                  <template v-if="item.allocated"> / {{ fmt(item.allocated) }}</template>
-                  ({{ item.percent }}%)
-                </span>
+                    {{ fmt(item.value) }}
+                    <template v-if="item.allocated"> / {{ fmt(item.allocated) }}</template>
+                    ({{ item.percent }}%)
+                  </span>
                   <UIcon
                     v-if="item.transactions?.length"
                     :name="expandedCategories.has(`${group.label}:${item.label}`) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"

@@ -181,7 +181,7 @@ async function toggleRecording() {
                   @click="selectPrompt(item)"
                 >
                   <UIcon
-                    :name="item.route ? 'i-lucide-chart-no-axes-combined' : 'i-lucide-message-circle'"
+                    :name="item.route ? 'i-lucide-zap' : 'i-lucide-message-circle'"
                     class="size-3.5 shrink-0 text-muted"
                   />
                   <span class="truncate">{{ item.label }}</span>
