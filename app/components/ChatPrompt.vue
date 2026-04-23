@@ -7,13 +7,11 @@ const props = defineProps<{
   error?: Error;
   disabled?: boolean;
   promptGroups?: PromptGroup[];
-  hasMessages?: boolean;
 }>();
 
 const emit = defineEmits<{
   submit: [];
   stop: [];
-  clear: [];
   prompt: [item: PromptItem];
 }>();
 
@@ -204,17 +202,6 @@ async function toggleRecording() {
         class="rounded-full"
         :disabled="disabled || isStreaming"
         @click="toggleRecording"
-      />
-
-      <!-- Clear chat -->
-      <UButton
-        icon="i-lucide-square-pen"
-        variant="ghost"
-        color="neutral"
-        size="xs"
-        class="rounded-full"
-        :disabled="!hasMessages"
-        @click="emit('clear')"
       />
 
       <!-- Send / Stop -->

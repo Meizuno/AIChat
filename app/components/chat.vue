@@ -49,6 +49,9 @@ const { data: appConfig } = await useFetch<AppConfig>('/api/config', { key: 'app
 const welcomeMessage = computed(() => appConfig.value?.defaults.welcomeMessage ?? '')
 const botName = computed(() => appConfig.value?.defaults.botName ?? '')
 const promptGroups = computed(() => appConfig.value?.promptGroups ?? [])
+const flatPrompts = computed(() =>
+  promptGroups.value.flatMap(g => g.prompts.map(p => ({ ...p, server: g.server })))
+)
 
 const promptLoading = ref(false)
 
@@ -235,6 +238,63 @@ function isAssistantThinking(message: { id: string, role: string }) {
   const isGenerating = chat.status === 'submitted' || chat.status === 'streaming'
   return isLatestAssistant && (isGenerating || promptLoading.value)
 }
+
+// --- Pull-to-refresh (clear chat) ---
+const PULL_THRESHOLD = 70
+const PULL_MAX = 120
+const pullDistance = ref(0)
+const isPulling = ref(false)
+const pullReady = computed(() => pullDistance.value >= PULL_THRESHOLD)
+let pullStartY: number | null = null
+
+function onPullStart(e: TouchEvent) {
+  if (!scrollContainer.value || scrollContainer.value.scrollTop > 0) return
+  if (chat.status === 'streaming' || chat.status === 'submitted') return
+  // Ignore touches that begin on the sticky input footer
+  const target = e.target as HTMLElement | null
+  if (target?.closest('[data-chat-footer]')) return
+  pullStartY = e.touches[0]?.clientY ?? null
+  isPulling.value = pullStartY !== null
+}
+
+function onPullMove(e: TouchEvent) {
+  if (pullStartY === null) return
+  const delta = (e.touches[0]?.clientY ?? pullStartY) - pullStartY
+  if (delta <= 0) {
+    pullDistance.value = 0
+    return
+  }
+  pullDistance.value = Math.min(delta * 0.5, PULL_MAX)
+  if (pullDistance.value > 0) e.preventDefault()
+}
+
+function onPullEnd() {
+  if (pullReady.value) {
+    window.location.reload()
+    return
+  }
+  pullDistance.value = 0
+  pullStartY = null
+  isPulling.value = false
+}
+
+onMounted(() => {
+  const el = scrollContainer.value
+  if (!el) return
+  el.addEventListener('touchstart', onPullStart, { passive: true })
+  el.addEventListener('touchmove', onPullMove, { passive: false })
+  el.addEventListener('touchend', onPullEnd, { passive: true })
+  el.addEventListener('touchcancel', onPullEnd, { passive: true })
+})
+
+onBeforeUnmount(() => {
+  const el = scrollContainer.value
+  if (!el) return
+  el.removeEventListener('touchstart', onPullStart)
+  el.removeEventListener('touchmove', onPullMove)
+  el.removeEventListener('touchend', onPullEnd)
+  el.removeEventListener('touchcancel', onPullEnd)
+})
 </script>
 
 <template>
@@ -334,36 +394,49 @@ function isAssistantThinking(message: { id: string, role: string }) {
       </div>
     </div>
 
+      <!-- Pull-to-refresh indicator -->
+      <div
+        class="shrink-0 overflow-hidden flex items-center justify-center"
+        :class="{ 'transition-[height] duration-200 ease-out': !isPulling }"
+        :style="{ height: pullDistance + 'px' }"
+      >
+        <div class="flex items-center gap-2 text-xs text-muted">
+          <UIcon
+            :name="pullReady ? 'i-lucide-refresh-cw' : 'i-lucide-arrow-down'"
+            class="size-4 transition-transform"
+            :class="{ 'text-primary': pullReady }"
+          />
+          <span :class="{ 'text-primary': pullReady }">{{ pullReady ? 'Release to refresh' : 'Pull to refresh' }}</span>
+        </div>
+      </div>
+
       <div class="flex-1 pt-4">
         <div
           v-if="chat.messages.length === 0 && welcomeMessage"
-          class="max-w-3xl mx-auto px-4 py-16 flex flex-col items-center gap-6"
+          class="max-w-3xl mx-auto px-4 py-8 sm:py-16 flex flex-col items-center gap-4 sm:gap-6"
         >
-          <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
-            <img src="/favicon.svg" class="w-8 h-8" alt="bot icon">
+          <div class="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-primary/10 flex items-center justify-center">
+            <img src="/favicon.svg" class="w-6 h-6 sm:w-8 sm:h-8" alt="bot icon">
           </div>
           <div class="text-center">
             <p v-if="botName" class="font-semibold text-base">{{ botName }}</p>
             <p class="text-sm text-muted mt-1">{{ welcomeMessage }}</p>
           </div>
-          <div v-if="promptGroups.length" class="w-full grid gap-3" :class="promptGroups.length > 1 ? 'grid-cols-1 sm:grid-cols-2 max-w-2xl' : 'max-w-md'">
-            <div
-              v-for="group in promptGroups"
-              :key="group.server"
-              class="rounded-xl border border-default bg-default/50 p-3"
+          <div v-if="flatPrompts.length" class="w-full grid gap-2 grid-cols-2 max-w-2xl">
+            <button
+              v-for="item in flatPrompts"
+              :key="`${item.server}:${item.label}`"
+              class="group flex items-center gap-2 rounded-xl border border-default bg-default/50 p-1 text-left hover:bg-elevated hover:border-primary/50 transition-all cursor-pointer"
+              @click="useSuggestedPrompt(item)"
             >
-              <p class="text-xs font-semibold text-muted uppercase tracking-wider mb-2.5 px-1">{{ group.server }}</p>
-              <div class="grid gap-1.5">
-                <button
-                  v-for="item in group.prompts"
-                  :key="item.label"
-                  class="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-elevated transition-colors cursor-pointer"
-                  @click="useSuggestedPrompt(item)"
-                >
-                  {{ item.label }}
-                </button>
+              <div class="size-6 shrink-0 rounded-lg bg-primary/10 flex items-center justify-center">
+                <UIcon
+                  :name="item.route ? 'i-lucide-zap' : 'i-lucide-message-circle'"
+                  class="size-4 text-primary"
+                />
               </div>
-            </div>
+              <span class="flex-1 text-sm font-medium leading-tight truncate">{{ item.label }}</span>
+            </button>
           </div>
         </div>
         <UChatMessages
@@ -414,7 +487,7 @@ function isAssistantThinking(message: { id: string, role: string }) {
         </UChatMessages>
       </div>
 
-      <div class="sticky bottom-0 z-20 shrink-0 p-6 bg-opacity-0">
+      <div data-chat-footer class="sticky bottom-0 z-20 shrink-0 p-6 bg-opacity-0">
         <div class="max-w-3xl mx-auto relative">
           <Transition name="usage">
             <div v-if="usage" class="absolute -top-6 right-1 flex items-center gap-3 text-xs text-muted">
@@ -429,10 +502,8 @@ function isAssistantThinking(message: { id: string, role: string }) {
             :error="chat.error"
             :disabled="promptLoading"
             :prompt-groups="promptGroups"
-            :has-messages="chat.messages.length > 0"
             @submit="onSubmit"
             @stop="chat.stop()"
-            @clear="chat.messages = []; usage = null"
             @prompt="useSuggestedPrompt($event)"
           />
         </div>
