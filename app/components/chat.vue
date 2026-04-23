@@ -370,8 +370,8 @@ function isAssistantThinking(message: { id: string, role: string }) {
           class="max-w-3xl mx-auto px-4"
           :messages="chat.messages"
           :status="chat.status"
-          :user="{ ui: { actions: '!opacity-100', content: 'rounded-3xl px-4 py-2' } }"
-          :assistant="{ ui: { actions: '!opacity-100', root: 'last:h-fit' } }"
+          :user="{ ui: { actions: '!opacity-100', content: 'rounded-3xl px-4 py-2', root: 'last:!h-fit last:!min-h-0' } }"
+          :assistant="{ ui: { actions: '!opacity-100', root: 'last:!h-fit last:!min-h-0' } }"
         >
           <template #content="{ message }">
             <template
