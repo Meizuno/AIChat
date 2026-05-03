@@ -1,8 +1,7 @@
 <script setup lang="ts">
 // @ts-expect-error vue-chartjs types incompatible with strict mode
-import { Bar, Pie } from 'vue-chartjs'
+import { Bar } from 'vue-chartjs'
 
-type ChartType = 'bar' | 'pie'
 type TxRow = { id: number, date: string, name: string, amount: number, currency: string, category: number }
 type ExpenseCat = { id: number, label: string, color: string, percent: number, position: number }
 type IncomeCat = { id: number, label: string, color: string, position: number }
@@ -43,7 +42,6 @@ watch(parsed, val => { localPayload.value = val })
 const _now = new Date()
 const currentNav = ref<{ month: number, year: number }>({ month: _now.getMonth() + 1, year: _now.getFullYear() })
 
-const activeType = ref<ChartType>('bar')
 const navLoading = ref(false)
 const expandedCategories = ref<Set<string>>(new Set())
 
@@ -170,10 +168,10 @@ const chartData = computed(() => {
   if (!items.length) return null
   const colors = items.map(e => e.color)
   const common = {
-    borderColor: activeType.value === 'bar' ? 'rgba(255,255,255,0.75)' : undefined,
-    borderWidth: activeType.value === 'bar' ? 1.5 : 0,
-    hoverBorderWidth: activeType.value === 'bar' ? 1.5 : 0,
-    borderRadius: activeType.value === 'bar' ? 10 : undefined
+    borderColor: 'rgba(255,255,255,0.75)',
+    borderWidth: 1.5,
+    hoverBorderWidth: 1.5,
+    borderRadius: 10
   }
   return {
     labels: items.map(e => `${e.label} (${e.percent}%)`),
@@ -248,25 +246,54 @@ const staticOptions = {
   }
 }
 
-const barScales = {
+// Chart instance ref so we can dismiss the tooltip from outside the
+// chart's own event flow (touch outside the canvas, etc.).
+const chartRef = ref<{ chart?: any } | null>(null)
+
+function dismissTooltip() {
+  const chart = chartRef.value?.chart
+  if (!chart) return
+  chart.setActiveElements([])
+  chart.tooltip?.setActiveElements([], { x: 0, y: 0 })
+  chart.update()
+}
+
+if (import.meta.client) {
+  // Tap anywhere outside the chart canvas → dismiss the sticky tooltip.
+  // `pointerdown` fires before `click` and covers both mouse and touch.
+  const onOutside = (e: PointerEvent) => {
+    const chart = chartRef.value?.chart
+    if (!chart) return
+    const canvas = chart.canvas as HTMLCanvasElement | undefined
+    if (!canvas) return
+    if (!canvas.contains(e.target as Node)) dismissTooltip()
+  }
+  onMounted(() => document.addEventListener('pointerdown', onOutside))
+  onUnmounted(() => document.removeEventListener('pointerdown', onOutside))
+}
+
+const chartOptions = {
+  ...staticOptions,
+  // Tap on a bar again → toggle the tooltip off. Tap on empty canvas
+  // area → also dismiss.
+  onClick(_evt: unknown, elements: { index: number }[], chart: any) {
+    const active = chart.tooltip?.getActiveElements?.() ?? []
+    if (
+      elements.length === 0
+      || (active.length && elements[0]?.index === active[0]?.index)
+    ) {
+      dismissTooltip()
+    }
+  },
+  plugins: {
+    ...staticOptions.plugins,
+    legend: { display: false }
+  },
   scales: {
     y: { beginAtZero: true, grid: { color: 'rgba(148,163,184,0.16)' }, border: { display: false }, ticks: { color: '#64748b' } },
     x: { grid: { display: false }, border: { display: false }, ticks: { color: '#475569' } }
   }
 }
-
-const chartOptions = computed(() => ({
-  ...staticOptions,
-  plugins: {
-    ...staticOptions.plugins,
-    legend: {
-      display: activeType.value === 'pie',
-      position: 'bottom' as const,
-      labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 8, boxHeight: 8, padding: 16 }
-    }
-  },
-  ...(activeType.value === 'bar' ? barScales : { cutout: '58%' })
-}))
 </script>
 
 <template>
@@ -290,42 +317,21 @@ const chartOptions = computed(() => ({
               {{ subtitle }}
             </p>
           </div>
-          <div class="flex shrink-0 flex-col items-end gap-1.5">
-            <div class="flex gap-1 rounded-xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
-              <UButton
-                size="xs"
-                :variant="activeType === 'bar' ? 'solid' : 'ghost'"
-                color="primary"
-                icon="i-lucide-bar-chart-2"
-                aria-label="Bar chart"
-                @click="activeType = 'bar'"
-              />
-              <UButton
-                size="xs"
-                :variant="activeType === 'pie' ? 'solid' : 'ghost'"
-                color="primary"
-                icon="i-lucide-pie-chart"
-                aria-label="Pie chart"
-                @click="activeType = 'pie'"
-              />
-            </div>
-            <div class="rounded-xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
-              <USelect
-                :model-value="selectedMonth"
-                :items="monthOptions"
-                :disabled="navLoading"
-                size="xs"
-                color="neutral"
-                variant="ghost"
-                :ui="{ base: 'cursor-pointer' }"
-                @update:model-value="navigateToMonth"
-              />
-            </div>
+          <div class="shrink-0 rounded-xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
+            <USelect
+              :model-value="selectedMonth"
+              :items="monthOptions"
+              :disabled="navLoading"
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              :ui="{ base: 'cursor-pointer' }"
+              @update:model-value="navigateToMonth"
+            />
           </div>
         </div>
         <div class="h-80">
-          <Bar v-if="activeType === 'bar'" :data="chartData" :options="chartOptions" />
-          <Pie v-else :data="chartData" :options="chartOptions" />
+          <Bar ref="chartRef" :data="chartData" :options="chartOptions" />
         </div>
         <div
           v-if="totalIncome > 0 || totalSpent > 0"
