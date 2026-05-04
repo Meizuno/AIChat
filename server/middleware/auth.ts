@@ -3,7 +3,8 @@ const SKIP_PATHS = [
   '/api/auth/callback',
   '/api/auth/refresh',
   '/api/auth/logout',
-  '/api/_nuxt_icon/'
+  '/api/_nuxt_icon/',
+  '/api/health'
 ]
 
 export default defineEventHandler(async (event) => {
