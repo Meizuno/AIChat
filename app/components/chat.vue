@@ -422,11 +422,11 @@ onBeforeUnmount(() => {
             <p v-if="botName" class="font-semibold text-base">{{ botName }}</p>
             <p class="text-sm text-muted mt-1">{{ welcomeMessage }}</p>
           </div>
-          <div v-if="flatPrompts.length" class="w-full grid gap-2 grid-cols-2 max-w-2xl">
+          <div v-if="flatPrompts.length" class="flex flex-wrap justify-center gap-2 max-w-2xl">
             <button
               v-for="item in flatPrompts"
               :key="`${item.server}:${item.label}`"
-              class="group flex items-center gap-2 rounded-xl border border-default bg-default/50 p-1 text-left hover:bg-elevated hover:border-primary/50 transition-all cursor-pointer"
+              class="group flex items-center gap-2 rounded-xl border border-default bg-default/50 p-1 pr-3 text-left hover:bg-elevated hover:border-primary/50 transition-all cursor-pointer"
               @click="useSuggestedPrompt(item)"
             >
               <div class="size-6 shrink-0 rounded-lg bg-primary/10 flex items-center justify-center">
