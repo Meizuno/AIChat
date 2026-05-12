@@ -29,12 +29,18 @@ importers:
       '@nuxtjs/mdc':
         specifier: ^0.20.2
         version: 0.20.2(magicast@0.5.2)
+      '@types/d3-force':
+        specifier: ^3.0.10
+        version: 3.0.10
       ai:
         specifier: ^6.0.116
         version: 6.0.116(zod@4.3.6)
       chart.js:
         specifier: ^4.5.1
         version: 4.5.1
+      d3-force:
+        specifier: ^3.0.0
+        version: 3.0.0
       js-yaml:
         specifier: ^4.1.1
         version: 4.1.1
@@ -1916,6 +1922,9 @@ packages:
   '@tybys/wasm-util@0.10.1':
     resolution: {integrity: sha512-9tTaPJLSiejZKx+Bmog4uSubteqTvFrVrURwkmHixBo0G4seD0zUxp98E1DzUBJxLQ3NPwXrGKDiVjwx/DpPsg==}
 
+  '@types/d3-force@3.0.10':
+    resolution: {integrity: sha512-ZYeSaCF3p73RdOKcjj+swRlZfnYpK1EbaDiYICEEp5Q6sUiqFaFQ9qgoshp5CzIyyb/yD09kD9o2zEltCexlgw==}
+
   '@types/debug@4.1.13':
     resolution: {integrity: sha512-KSVgmQmzMwPlmtljOomayoR89W4FynCAi3E8PPs7vmDVPe84hT+vGPKkJfThkmXs0x0jAaa9U8uW8bbfyS2fWw==}
 
@@ -2810,6 +2819,22 @@ packages:
 
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
+
+  d3-dispatch@3.0.1:
+    resolution: {integrity: sha512-rzUyPU/S7rwUflMyLc1ETDeBj0NRuHKKAcvukozwhshr6g6c5d8zh4c2gQjY2bZ0dXeGLWc1PF174P2tVvKhfg==}
+    engines: {node: '>=12'}
+
+  d3-force@3.0.0:
+    resolution: {integrity: sha512-zxV/SsA+U4yte8051P4ECydjD/S+qeYtnaIyAs9tgHCqfguma/aAQDjo85A9Z6EKhBirHRJHXIgJUlffT4wdLg==}
+    engines: {node: '>=12'}
+
+  d3-quadtree@3.0.1:
+    resolution: {integrity: sha512-04xDrxQTDTCFwP5H6hRhsRcb9xxv2RzkcsygFzmkSIOJy3PeRJP7sNk3VRIbKXcog561P9oU0/rVH6vDROAgUw==}
+    engines: {node: '>=12'}
+
+  d3-timer@3.0.1:
+    resolution: {integrity: sha512-ndfJ/JxxMd3nw31uyKoY2naivF+r29V+Lc0svZxe1JvvIRmi8hUsrMvdOwgS1o6uBHmiz91geQ0ylPP0aj1VUA==}
+    engines: {node: '>=12'}
 
   db0@0.3.4:
     resolution: {integrity: sha512-RiXXi4WaNzPTHEOu8UPQKMooIbqOEyqA1t7Z6MsdxSCeb8iUC9ko3LcmsLmeUt2SM5bctfArZKkRQggKZz7JNw==}
@@ -8061,6 +8086,8 @@ snapshots:
       tslib: 2.8.1
     optional: true
 
+  '@types/d3-force@3.0.10': {}
+
   '@types/debug@4.1.13':
     dependencies:
       '@types/ms': 2.1.0
@@ -8992,6 +9019,18 @@ snapshots:
       css-tree: 2.2.1
 
   csstype@3.2.3: {}
+
+  d3-dispatch@3.0.1: {}
+
+  d3-force@3.0.0:
+    dependencies:
+      d3-dispatch: 3.0.1
+      d3-quadtree: 3.0.1
+      d3-timer: 3.0.1
+
+  d3-quadtree@3.0.1: {}
+
+  d3-timer@3.0.1: {}
 
   db0@0.3.4(@electric-sql/pglite@0.4.1)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.1)(@opentelemetry/api@1.9.0)(@prisma/client@6.19.3(prisma@6.19.3(magicast@0.5.2)(typescript@5.9.3))(typescript@5.9.3))(@types/pg@8.20.0)(mysql2@3.15.3)(pg@8.20.0)(postgres@3.4.8)(prisma@6.19.3(magicast@0.5.2)(typescript@5.9.3)))(mysql2@3.15.3):
     optionalDependencies:

@@ -6,6 +6,7 @@ export default defineEventHandler(async (event) => {
     folder: query.folder,
     search: query.search,
     limit: query.limit,
-    offset: query.offset
+    offset: query.offset,
+    view: query.view
   })
 })
