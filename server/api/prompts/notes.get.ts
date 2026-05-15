@@ -1,7 +1,7 @@
 export default defineEventHandler(async (event) => {
   await requireAuthUser(event)
   const query = getQuery(event)
-  return fetchPrompt(event, 'Knowledge Base', '/api/prompts/notes', {
+  return fetchPrompt(event, 'Notes', '/api/prompts/notes', {
     id: query.id,
     folder: query.folder,
     search: query.search,
