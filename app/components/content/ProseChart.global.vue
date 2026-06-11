@@ -30,11 +30,17 @@ const props = defineProps({
 })
 
 const parsed = computed(() => {
-  try { return JSON.parse(props.code.trim()) as FinancePayload } catch { return null }
+  try {
+    return JSON.parse(props.code.trim()) as FinancePayload
+  } catch {
+    return null
+  }
 })
 
 const localPayload = ref<FinancePayload | null>(parsed.value)
-watch(parsed, (val) => { localPayload.value = val })
+watch(parsed, (val) => {
+  localPayload.value = val
+})
 
 // Server no longer echoes period — default to current month/year; picker updates this.
 const _now = new Date()
@@ -220,7 +226,8 @@ async function navigateToMonth(value: string) {
 
 function toggleCategory(label: string) {
   const next = new Set(expandedCategories.value)
-  next.has(label) ? next.delete(label) : next.add(label)
+  if (next.has(label)) next.delete(label)
+  else next.add(label)
   expandedCategories.value = next
 }
 
@@ -246,9 +253,22 @@ const staticOptions = {
   }
 }
 
+// Narrow surface of the chart.js Chart instance we actually touch.
+// vue-chartjs/chart.js own typings drag in a sprawling generic web
+// that we don't need here — a structural type covers the calls.
+type ChartLike = {
+  canvas?: HTMLCanvasElement
+  setActiveElements: (els: unknown[]) => void
+  update: () => void
+  tooltip?: {
+    getActiveElements?: () => { index: number }[]
+    setActiveElements: (els: unknown[], pos: { x: number, y: number }) => void
+  }
+}
+
 // Chart instance ref so we can dismiss the tooltip from outside the
 // chart's own event flow (touch outside the canvas, etc.).
-const chartRef = ref<{ chart?: any } | null>(null)
+const chartRef = ref<{ chart?: ChartLike } | null>(null)
 
 function dismissTooltip() {
   const chart = chartRef.value?.chart
@@ -276,8 +296,12 @@ const chartOptions = {
   ...staticOptions,
   // Tap on a bar again → toggle the tooltip off. Tap on empty canvas
   // area → also dismiss.
-  onClick(_evt: unknown, elements: { index: number }[], chart: any) {
-    const active = chart.tooltip?.getActiveElements?.() ?? []
+  // chart.js types `chart` as `Chart` here — accept `unknown` and
+  // narrow to our local surface; the typed object would otherwise
+  // refuse to merge into Bar's DeepPartial options shape.
+  onClick(_evt: unknown, elements: { index: number }[], chart: unknown) {
+    const c = chart as ChartLike
+    const active = c.tooltip?.getActiveElements?.() ?? []
     if (
       elements.length === 0
       || (active.length && elements[0]?.index === active[0]?.index)

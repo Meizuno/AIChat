@@ -22,7 +22,9 @@ const isStreaming = computed(
 )
 const hasText = computed(() => input.value.trim().length > 0)
 
-const chatInput = useTemplateRef<any>('chatInput')
+// Nuxt UI's UTextarea component instance — only used as a ref slot, no method calls.
+const chatInput = useTemplateRef<HTMLElement>('chatInput')
+void chatInput
 
 function handleSubmit() {
   if (props.disabled) return

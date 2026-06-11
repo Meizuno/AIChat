@@ -56,7 +56,11 @@ const props = defineProps({
 })
 
 const parsed = computed(() => {
-  try { return JSON.parse(props.code.trim()) as AnyPayload } catch { return null }
+  try {
+    return JSON.parse(props.code.trim()) as AnyPayload
+  } catch {
+    return null
+  }
 })
 
 // ───────────────────────────── data ──────────────────────────────
@@ -75,7 +79,11 @@ async function ensureGraph() {
     graphData.value = await $fetch<GraphPayload>('/api/prompts/notes', {
       params: { view: 'graph' }
     })
-  } catch (err) { console.warn('[notes] graph fetch failed:', err) } finally { loading.value = false }
+  } catch (err) {
+    console.warn('[notes] graph fetch failed:', err)
+  } finally {
+    loading.value = false
+  }
 }
 onMounted(ensureGraph)
 
@@ -188,11 +196,16 @@ const FIT_PADDING = 30
 
 function fitToViewport() {
   if (!nodes.value.length || width.value === 0 || height.value === 0) return
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
   for (const n of nodes.value) {
     if (n.x == null || n.y == null) continue
-    if (n.x < minX) minX = n.x; if (n.x > maxX) maxX = n.x
-    if (n.y < minY) minY = n.y; if (n.y > maxY) maxY = n.y
+    if (n.x < minX) minX = n.x
+    if (n.x > maxX) maxX = n.x
+    if (n.y < minY) minY = n.y
+    if (n.y > maxY) maxY = n.y
   }
   if (!isFinite(minX) || !isFinite(minY)) return
   const bboxW = Math.max(1, maxX - minX)
@@ -236,7 +249,8 @@ function startSim() {
   simulation
     .alpha(0.3)
     .on('tick', () => {
-      triggerRef(nodes); triggerRef(edges)
+      triggerRef(nodes)
+      triggerRef(edges)
       if (!userInteracted.value) fitToViewport()
     })
     .restart()
@@ -317,14 +331,16 @@ function onNodePointerDown(node: GraphNode, e: PointerEvent) {
   ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
   if (simulation) simulation.alphaTarget(0.3).restart()
   const { x, y } = toGraphCoords(e)
-  node.fx = x; node.fy = y
+  node.fx = x
+  node.fy = y
   dragState.value = { id: node.id, moved: false }
 }
 function onNodePointerMove(node: GraphNode, e: PointerEvent) {
   if (!dragState.value || dragState.value.id !== node.id) return
   dragState.value.moved = true
   const { x, y } = toGraphCoords(e)
-  node.fx = x; node.fy = y
+  node.fx = x
+  node.fy = y
 }
 const openedNoteId = ref<number | null>(null)
 const openedNoteContent = ref<string | null>(null)
@@ -333,7 +349,8 @@ async function onNodePointerUp(node: GraphNode, e: PointerEvent) {
   if (!dragState.value || dragState.value.id !== node.id) return
   ;(e.currentTarget as Element).releasePointerCapture?.(e.pointerId)
   if (simulation) simulation.alphaTarget(0)
-  node.fx = null; node.fy = null
+  node.fx = null
+  node.fy = null
   const moved = dragState.value.moved
   dragState.value = null
   if (moved || node.type !== 'note') return

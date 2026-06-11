@@ -17,24 +17,28 @@ export default defineEventHandler(async (event) => {
     return
   }
 
-  // Capture the response to cache it
+  // Capture the response to cache it. The chunk types here mirror
+  // Node's stream signature — string | Buffer | Uint8Array. Using
+  // `unknown` keeps us out of the `any` aisle while accepting what
+  // Node actually hands us.
+  type StreamChunk = string | Buffer | Uint8Array
   const originalEnd = event.node.res.end.bind(event.node.res)
   const chunks: Buffer[] = []
 
-  event.node.res.end = function (chunk?: any, ...args: any[]) {
-    if (chunk) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  event.node.res.end = function (chunk?: unknown, ...args: unknown[]) {
+    if (chunk) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as StreamChunk))
     const html = Buffer.concat(chunks).toString('utf-8')
     if (event.node.res.statusCode === 200 && html.length > 0 && cache.size < MAX_CACHE_SIZE) {
       cache.set(path, html)
     }
-    return originalEnd(chunk, ...args)
-  } as any
+    return (originalEnd as (...a: unknown[]) => unknown)(chunk, ...args)
+  } as typeof event.node.res.end
 
   const originalWrite = event.node.res.write.bind(event.node.res)
-  event.node.res.write = function (chunk: any, ...args: any[]) {
-    if (chunk) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-    return originalWrite(chunk, ...args)
-  } as any
+  event.node.res.write = function (chunk: unknown, ...args: unknown[]) {
+    if (chunk) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as StreamChunk))
+    return (originalWrite as (...a: unknown[]) => boolean)(chunk, ...args)
+  } as typeof event.node.res.write
 
   event.node.res.setHeader('x-cache', 'MISS')
 })

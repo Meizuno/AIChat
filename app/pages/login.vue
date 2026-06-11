@@ -7,7 +7,9 @@ if (loggedIn.value) {
   await navigateTo('/')
 }
 
-const signIn = () => { window.location.href = '/api/auth/google' }
+function signIn() {
+  window.location.href = '/api/auth/google'
+}
 </script>
 
 <template>

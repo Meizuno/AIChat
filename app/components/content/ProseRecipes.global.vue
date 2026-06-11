@@ -22,11 +22,17 @@ const props = defineProps({
 })
 
 const parsed = computed(() => {
-  try { return JSON.parse(props.code.trim()) as RecipesPayload } catch { return null }
+  try {
+    return JSON.parse(props.code.trim()) as RecipesPayload
+  } catch {
+    return null
+  }
 })
 
 const localData = ref<RecipesPayload | null>(parsed.value)
-watch(parsed, (val) => { localData.value = val })
+watch(parsed, (val) => {
+  localData.value = val
+})
 
 const PAGE_SIZE = 10
 
