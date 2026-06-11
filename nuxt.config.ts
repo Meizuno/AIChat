@@ -15,11 +15,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     openaiApiKey: '',
     authServiceUrl: '',
-    mcpApiKey: '',
-    // URL of the local Whisper sidecar used by /api/transcribe.
-    // Default targets the in-network service name from docker-compose;
-    // override with NUXT_WHISPER_URL=... for dev.
-    whisperUrl: ''
+    mcpApiKey: ''
   },
 
   mdc: {
