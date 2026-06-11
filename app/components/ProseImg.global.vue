@@ -14,5 +14,5 @@ defineProps({
     :width="width"
     :height="height"
     class="my-4 rounded-xl border border-default"
-  />
+  >
 </template>

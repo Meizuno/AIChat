@@ -1,43 +1,43 @@
 <script setup lang="ts">
-type PromptItem = { label: string; prompt?: string; route?: string };
-type PromptGroup = { server: string; prompts: PromptItem[] };
+type PromptItem = { label: string, prompt?: string, route?: string }
+type PromptGroup = { server: string, prompts: PromptItem[] }
 
 const props = defineProps<{
-  status: "idle" | "submitted" | "streaming" | "error" | "ready";
-  error?: Error;
-  disabled?: boolean;
-  promptGroups?: PromptGroup[];
-}>();
+  status: 'idle' | 'submitted' | 'streaming' | 'error' | 'ready'
+  error?: Error
+  disabled?: boolean
+  promptGroups?: PromptGroup[]
+}>()
 
 const emit = defineEmits<{
-  submit: [];
-  stop: [];
-  prompt: [item: PromptItem];
-}>();
+  submit: []
+  stop: []
+  prompt: [item: PromptItem]
+}>()
 
-const input = defineModel<string>({ default: "" });
+const input = defineModel<string>({ default: '' })
 
 const isStreaming = computed(
-  () => props.status === "streaming" || props.status === "submitted",
-);
-const hasText = computed(() => input.value.trim().length > 0);
+  () => props.status === 'streaming' || props.status === 'submitted'
+)
+const hasText = computed(() => input.value.trim().length > 0)
 
-const chatInput = useTemplateRef<any>("chatInput");
+const chatInput = useTemplateRef<any>('chatInput')
 
 function handleSubmit() {
-  if (props.disabled) return;
+  if (props.disabled) return
   if (isStreaming.value) {
-    emit("stop");
+    emit('stop')
   } else if (hasText.value) {
-    emit("submit");
+    emit('submit')
   }
 }
 
-const promptsOpen = ref(false);
+const promptsOpen = ref(false)
 
 function selectPrompt(item: PromptItem) {
-  promptsOpen.value = false;
-  emit("prompt", item);
+  promptsOpen.value = false
+  emit('prompt', item)
 }
 </script>
 
@@ -79,7 +79,10 @@ function selectPrompt(item: PromptItem) {
         />
         <template #content>
           <div class="w-64 p-2 space-y-3">
-            <div v-for="group in promptGroups" :key="group.server">
+            <div
+              v-for="group in promptGroups"
+              :key="group.server"
+            >
               <p class="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
                 {{ group.server }}
               </p>
@@ -106,8 +109,14 @@ function selectPrompt(item: PromptItem) {
       <div class="flex-1" />
 
       <!-- Send / Stop -->
-      <Transition name="fade" mode="out-in">
-        <span v-if="isStreaming" key="stop">
+      <Transition
+        name="fade"
+        mode="out-in"
+      >
+        <span
+          v-if="isStreaming"
+          key="stop"
+        >
           <UButton
             icon="i-lucide-square"
             color="primary"
@@ -117,7 +126,10 @@ function selectPrompt(item: PromptItem) {
             @click="emit('stop')"
           />
         </span>
-        <span v-else key="send">
+        <span
+          v-else
+          key="send"
+        >
           <UButton
             icon="i-lucide-arrow-up"
             color="primary"

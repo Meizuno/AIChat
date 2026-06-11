@@ -1,3 +1,5 @@
 <template>
-  <li class="leading-relaxed"><slot /></li>
+  <li class="leading-relaxed">
+    <slot />
+  </li>
 </template>

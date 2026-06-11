@@ -22,12 +22,11 @@ const props = defineProps({
 })
 
 const parsed = computed(() => {
-  try { return JSON.parse(props.code.trim()) as RecipesPayload }
-  catch { return null }
+  try { return JSON.parse(props.code.trim()) as RecipesPayload } catch { return null }
 })
 
 const localData = ref<RecipesPayload | null>(parsed.value)
-watch(parsed, val => { localData.value = val })
+watch(parsed, (val) => { localData.value = val })
 
 const PAGE_SIZE = 10
 
@@ -76,11 +75,9 @@ async function fetchPage(p: number) {
     recipes.value = data.recipes
     total.value = data.total
     expandedId.value = null
-  }
-  catch (err) {
+  } catch (err) {
     if (mySeq === reloadSeq) console.warn('[recipes] fetch failed:', err)
-  }
-  finally {
+  } finally {
     if (mySeq === reloadSeq) searching.value = false
   }
 }
@@ -126,9 +123,7 @@ async function toggleRecipe(recipe: RecipeItem) {
         params: { id: recipe.id }
       })
       recipeContent.value.set(recipe.id, data.recipe?.content ?? '')
-    }
-    catch { /* ignore */ }
-    finally { contentLoading.value = null }
+    } catch { /* ignore */ } finally { contentLoading.value = null }
   }
 }
 
@@ -136,7 +131,10 @@ const { onEnter: onExpandEnter, onAfterEnter: onExpandAfterEnter, onLeave: onExp
 </script>
 
 <template>
-  <div v-if="localData" class="relative my-5 w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200/70 bg-linear-to-br from-white to-slate-50 p-5 shadow-sm dark:border-slate-700/60 dark:from-slate-900 dark:to-slate-800">
+  <div
+    v-if="localData"
+    class="relative my-5 w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200/70 bg-linear-to-br from-white to-slate-50 p-5 shadow-sm dark:border-slate-700/60 dark:from-slate-900 dark:to-slate-800"
+  >
     <div class="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full bg-orange-400/10 blur-2xl" />
     <div class="pointer-events-none absolute -bottom-16 -left-12 h-32 w-32 rounded-full bg-amber-400/10 blur-2xl" />
 
@@ -158,7 +156,10 @@ const { onEnter: onExpandEnter, onAfterEnter: onExpandAfterEnter, onLeave: onExp
 
     <!-- Search -->
     <div class="relative mb-3">
-      <UIcon name="i-lucide-search" class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+      <UIcon
+        name="i-lucide-search"
+        class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400"
+      />
       <input
         v-model="search"
         type="search"
@@ -173,7 +174,10 @@ const { onEnter: onExpandEnter, onAfterEnter: onExpandAfterEnter, onLeave: onExp
     </div>
 
     <!-- Tag filters -->
-    <div v-if="localData.tags.length" class="flex flex-wrap gap-1.5 mb-4">
+    <div
+      v-if="localData.tags.length"
+      class="flex flex-wrap gap-1.5 mb-4"
+    >
       <button
         v-for="tag in localData.tags"
         :key="tag.id"
@@ -222,22 +226,45 @@ const { onEnter: onExpandEnter, onAfterEnter: onExpandAfterEnter, onLeave: onExp
           @after-enter="onExpandAfterEnter"
           @leave="onExpandLeave"
         >
-          <div v-if="expandedId === recipe.id" class="border-t border-slate-200/70 dark:border-slate-700/60 px-4 py-3">
-            <div v-if="contentLoading === recipe.id" class="flex items-center gap-2 text-xs text-slate-400">
-              <UIcon name="i-lucide-loader-2" class="h-3.5 w-3.5 animate-spin" />
+          <div
+            v-if="expandedId === recipe.id"
+            class="border-t border-slate-200/70 dark:border-slate-700/60 px-4 py-3"
+          >
+            <div
+              v-if="contentLoading === recipe.id"
+              class="flex items-center gap-2 text-xs text-slate-400"
+            >
+              <UIcon
+                name="i-lucide-loader-2"
+                class="h-3.5 w-3.5 animate-spin"
+              />
               Loading recipe…
             </div>
-            <div v-else-if="recipeContent.get(recipe.id)" class="prose prose-sm dark:prose-invert max-w-none *:first:mt-0 *:last:mb-0">
-              <MDC :value="recipeContent.get(recipe.id)!" :cache-key="`recipe-${recipe.id}`" />
+            <div
+              v-else-if="recipeContent.get(recipe.id)"
+              class="prose prose-sm dark:prose-invert max-w-none *:first:mt-0 *:last:mb-0"
+            >
+              <MDC
+                :value="recipeContent.get(recipe.id)!"
+                :cache-key="`recipe-${recipe.id}`"
+              />
             </div>
-            <p v-else class="text-xs text-slate-400 italic">No content</p>
+            <p
+              v-else
+              class="text-xs text-slate-400 italic"
+            >
+              No content
+            </p>
           </div>
         </Transition>
       </div>
     </div>
 
     <!-- Pagination -->
-    <div v-if="total > PAGE_SIZE" class="mt-4 flex justify-center">
+    <div
+      v-if="total > PAGE_SIZE"
+      class="mt-4 flex justify-center"
+    >
       <UPagination
         v-model:page="page"
         :total="total"
@@ -248,8 +275,15 @@ const { onEnter: onExpandEnter, onAfterEnter: onExpandAfterEnter, onLeave: onExp
     </div>
 
     <!-- Empty state -->
-    <p v-if="!filteredRecipes.length && !searching" class="text-sm text-slate-400 text-center py-6">
-      No recipes found<template v-if="search"> matching "{{ search }}"</template><template v-if="activeTag"> tagged "{{ activeTag }}"</template>
+    <p
+      v-if="!filteredRecipes.length && !searching"
+      class="text-sm text-slate-400 text-center py-6"
+    >
+      No recipes found<template v-if="search">
+        matching "{{ search }}"
+      </template><template v-if="activeTag">
+        tagged "{{ activeTag }}"
+      </template>
     </p>
   </div>
 </template>
