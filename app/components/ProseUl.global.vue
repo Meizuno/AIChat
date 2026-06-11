@@ -1,3 +1,5 @@
 <template>
-  <ul class="my-4 list-disc pl-6 space-y-1"><slot /></ul>
+  <ul class="my-4 list-disc pl-6 space-y-1">
+    <slot />
+  </ul>
 </template>

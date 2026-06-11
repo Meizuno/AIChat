@@ -1,3 +1,5 @@
 <template>
-  <ol class="my-4 list-decimal pl-6 space-y-1"><slot /></ol>
+  <ol class="my-4 list-decimal pl-6 space-y-1">
+    <slot />
+  </ol>
 </template>

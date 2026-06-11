@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// @ts-expect-error vue-chartjs types incompatible with strict mode
 import { Bar } from 'vue-chartjs'
 
 type TxRow = { id: number, date: string, name: string, amount: number, currency: string, category: number }
@@ -31,12 +30,11 @@ const props = defineProps({
 })
 
 const parsed = computed(() => {
-  try { return JSON.parse(props.code.trim()) as FinancePayload }
-  catch { return null }
+  try { return JSON.parse(props.code.trim()) as FinancePayload } catch { return null }
 })
 
 const localPayload = ref<FinancePayload | null>(parsed.value)
-watch(parsed, val => { localPayload.value = val })
+watch(parsed, (val) => { localPayload.value = val })
 
 // Server no longer echoes period — default to current month/year; picker updates this.
 const _now = new Date()
@@ -177,7 +175,7 @@ const chartData = computed(() => {
     labels: items.map(e => `${e.label} (${e.percent}%)`),
     datasets: [
       { label: 'Allocated (CZK)', data: items.map(e => e.allocated), backgroundColor: colors.map(c => c + '80'), ...common },
-      { label: 'Spent (CZK)',     data: items.map(e => e.spent),     backgroundColor: colors, ...common }
+      { label: 'Spent (CZK)', data: items.map(e => e.spent), backgroundColor: colors, ...common }
     ]
   }
 })
@@ -207,15 +205,17 @@ const selectedMonth = computed(() => `${currentNav.value.year}-${currentNav.valu
 
 async function navigateToMonth(value: string) {
   if (navLoading.value) return
-  const [year, month] = value.split('-').map(Number)
+  // value is always "YYYY-M" — the picker has no other shape — so
+  // both halves are present. The destructure widens to `number |
+  // undefined` because of noUncheckedIndexedAccess; pin it back.
+  const [year, month] = value.split('-').map(Number) as [number, number]
   navLoading.value = true
   try {
     const data = await $fetch<FinancePayload>(FINANCE_ROUTE, { params: { month, year } })
     localPayload.value = data
     currentNav.value = { month, year }
     expandedCategories.value = new Set()
-  }
-  finally { navLoading.value = false }
+  } finally { navLoading.value = false }
 }
 
 function toggleCategory(label: string) {
@@ -331,7 +331,11 @@ const chartOptions = {
           </div>
         </div>
         <div class="h-80">
-          <Bar ref="chartRef" :data="chartData" :options="chartOptions" />
+          <Bar
+            ref="chartRef"
+            :data="chartData"
+            :options="chartOptions"
+          />
         </div>
         <div
           v-if="totalIncome > 0 || totalSpent > 0"
@@ -361,9 +365,18 @@ const chartOptions = {
           </span>
         </div>
 
-        <div v-if="legendGroupsNormalized.length" class="mt-4 space-y-4">
-          <div v-for="group in legendGroupsNormalized" :key="group.label">
-            <p v-if="group.label" class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <div
+          v-if="legendGroupsNormalized.length"
+          class="mt-4 space-y-4"
+        >
+          <div
+            v-for="group in legendGroupsNormalized"
+            :key="group.label"
+          >
+            <p
+              v-if="group.label"
+              class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+            >
               {{ group.label }}
             </p>
             <div class="grid gap-2">
@@ -377,7 +390,10 @@ const chartOptions = {
                   :class="item.transactions?.length ? 'cursor-pointer select-none' : ''"
                   @click="item.transactions?.length ? toggleCategory(`${group.label}:${item.label}`) : undefined"
                 >
-                  <span class="h-2.5 w-2.5 shrink-0 rounded-full" :style="{ backgroundColor: item.color }" />
+                  <span
+                    class="h-2.5 w-2.5 shrink-0 rounded-full"
+                    :style="{ backgroundColor: item.color }"
+                  />
                   <span class="flex-1 text-xs font-medium text-slate-700 dark:text-slate-200">{{ item.label }}</span>
                   <span class="text-xs text-slate-500 dark:text-slate-400">
                     {{ fmt(item.value) }}
@@ -406,7 +422,10 @@ const chartOptions = {
                   @after-enter="onExpandAfterEnter"
                   @leave="onExpandLeave"
                 >
-                  <div v-if="expandedCategories.has(`${group.label}:${item.label}`) && item.transactions?.length" class="border-t border-slate-200/70 dark:border-slate-700/60 px-3 py-2 space-y-1">
+                  <div
+                    v-if="expandedCategories.has(`${group.label}:${item.label}`) && item.transactions?.length"
+                    class="border-t border-slate-200/70 dark:border-slate-700/60 px-3 py-2 space-y-1"
+                  >
                     <div
                       v-for="tx in item.transactions"
                       :key="tx.id"

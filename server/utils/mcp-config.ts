@@ -26,8 +26,7 @@ export function getConfig(): AppConfig {
   try {
     const raw = readFileSync(filePath, 'utf-8')
     return load(raw) as AppConfig
-  }
-  catch {
+  } catch {
     return {
       mcpServers: [],
       systemPrompt: 'You are a helpful financial assistant.',

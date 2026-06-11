@@ -46,18 +46,17 @@ type GraphEdge = SimulationLinkDatum<GraphNode> & {
   target: number | string | GraphNode
 }
 
-type ListPayload    = { folders: Array<{ label: string, count: number }>, notes: NoteItem[], total: number }
+type ListPayload = { folders: Array<{ label: string, count: number }>, notes: NoteItem[], total: number }
 type FoldersPayload = { view: 'folders', folders: FolderBucket[], total: number }
-type GraphPayload   = { view: 'graph', nodes: GraphNode[], edges: GraphEdge[] }
-type AnyPayload     = ListPayload | FoldersPayload | GraphPayload
+type GraphPayload = { view: 'graph', nodes: GraphNode[], edges: GraphEdge[] }
+type AnyPayload = ListPayload | FoldersPayload | GraphPayload
 
 const props = defineProps({
   code: { type: String, required: true }
 })
 
 const parsed = computed(() => {
-  try { return JSON.parse(props.code.trim()) as AnyPayload }
-  catch { return null }
+  try { return JSON.parse(props.code.trim()) as AnyPayload } catch { return null }
 })
 
 // ───────────────────────────── data ──────────────────────────────
@@ -76,9 +75,7 @@ async function ensureGraph() {
     graphData.value = await $fetch<GraphPayload>('/api/prompts/notes', {
       params: { view: 'graph' }
     })
-  }
-  catch (err) { console.warn('[notes] graph fetch failed:', err) }
-  finally { loading.value = false }
+  } catch (err) { console.warn('[notes] graph fetch failed:', err) } finally { loading.value = false }
 }
 onMounted(ensureGraph)
 
@@ -201,7 +198,7 @@ function fitToViewport() {
   const bboxW = Math.max(1, maxX - minX)
   const bboxH = Math.max(1, maxY - minY)
   const k = Math.min(
-    (width.value  - 2 * FIT_PADDING) / bboxW,
+    (width.value - 2 * FIT_PADDING) / bboxW,
     (height.value - 2 * FIT_PADDING) / bboxH,
     1.5
   )
@@ -218,12 +215,12 @@ function startSim() {
   simulation = forceSimulation<GraphNode>(nodes.value)
     .force('link', forceLink<GraphNode, GraphEdge>(edges.value)
       .id(d => d.id)
-      .distance(e => {
+      .distance((e) => {
         const s = typeof e.source === 'object' ? e.source.type : null
         const t = typeof e.target === 'object' ? e.target.type : null
         return s === 'folder' && t === 'folder' ? 90 : 50
       })
-      .strength(e => {
+      .strength((e) => {
         const s = typeof e.source === 'object' ? e.source.type : null
         const t = typeof e.target === 'object' ? e.target.type : null
         return s === 'folder' && t === 'folder' ? 0.3 : 0.6
@@ -311,7 +308,7 @@ function toGraphCoords(e: PointerEvent) {
   const rect = containerRef.value!.getBoundingClientRect()
   return {
     x: (e.clientX - rect.left - transform.x) / transform.k,
-    y: (e.clientY - rect.top  - transform.y) / transform.k
+    y: (e.clientY - rect.top - transform.y) / transform.k
   }
 }
 function onNodePointerDown(node: GraphNode, e: PointerEvent) {
@@ -348,9 +345,7 @@ async function onNodePointerUp(node: GraphNode, e: PointerEvent) {
       params: { id: node.id }
     })
     openedNoteContent.value = data.note?.content ?? ''
-  }
-  catch { /* ignore */ }
-  finally { openedNoteLoading.value = false }
+  } catch { /* ignore */ } finally { openedNoteLoading.value = false }
 }
 
 onMounted(() => {
@@ -372,13 +367,19 @@ onBeforeUnmount(() => {
       <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">
         Knowledge base
       </p>
-      <p v-if="graphData" class="text-xs text-slate-500 dark:text-slate-400">
+      <p
+        v-if="graphData"
+        class="text-xs text-slate-500 dark:text-slate-400"
+      >
         {{ graphData.nodes.filter(n => n.type === 'note').length }} note{{ graphData.nodes.filter(n => n.type === 'note').length === 1 ? '' : 's' }}
       </p>
     </div>
 
     <!-- Folder chips — scope the graph to a single top-level folder. -->
-    <div v-if="folderOptions.length" class="mb-4 flex flex-wrap gap-1.5">
+    <div
+      v-if="folderOptions.length"
+      class="mb-4 flex flex-wrap gap-1.5"
+    >
       <button
         class="px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5"
         :class="selectedFolder === null
@@ -386,7 +387,10 @@ onBeforeUnmount(() => {
           : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20'"
         @click="selectedFolder = null"
       >
-        <UIcon name="i-lucide-layers" class="h-3 w-3" />
+        <UIcon
+          name="i-lucide-layers"
+          class="h-3 w-3"
+        />
         All
       </button>
       <button
@@ -408,14 +412,23 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- Loading shim -->
-    <p v-if="loading" class="text-xs text-slate-400 text-center py-12">
-      <UIcon name="i-lucide-loader-2" class="inline h-3.5 w-3.5 animate-spin mr-1" />
+    <p
+      v-if="loading"
+      class="text-xs text-slate-400 text-center py-12"
+    >
+      <UIcon
+        name="i-lucide-loader-2"
+        class="inline h-3.5 w-3.5 animate-spin mr-1"
+      />
       Loading…
     </p>
 
     <!-- Graph -->
     <template v-else-if="graphData">
-      <p v-if="!nodes.length" class="text-sm text-slate-400 text-center py-6">
+      <p
+        v-if="!nodes.length"
+        class="text-sm text-slate-400 text-center py-6"
+      >
         No notes{{ selectedFolder !== null ? ' in this folder' : ' yet' }}.
       </p>
       <template v-else>
@@ -428,7 +441,11 @@ onBeforeUnmount(() => {
           @pointerup="onPanEnd"
           @pointercancel="onPanEnd"
         >
-          <svg :width="width" :height="height" class="block cursor-grab active:cursor-grabbing">
+          <svg
+            :width="width"
+            :height="height"
+            class="block cursor-grab active:cursor-grabbing"
+          >
             <g :transform="`translate(${transform.x},${transform.y}) scale(${transform.k})`">
               <line
                 v-for="(e, i) in edges"
@@ -488,14 +505,31 @@ onBeforeUnmount(() => {
           v-if="openedNoteId != null"
           class="mt-3 rounded-xl border border-slate-200/70 bg-white/70 px-4 py-3 dark:border-slate-700/60 dark:bg-slate-900/50"
         >
-          <div v-if="openedNoteLoading" class="flex items-center gap-2 text-xs text-slate-400">
-            <UIcon name="i-lucide-loader-2" class="h-3.5 w-3.5 animate-spin" />
+          <div
+            v-if="openedNoteLoading"
+            class="flex items-center gap-2 text-xs text-slate-400"
+          >
+            <UIcon
+              name="i-lucide-loader-2"
+              class="h-3.5 w-3.5 animate-spin"
+            />
             Loading note…
           </div>
-          <div v-else-if="openedNoteContent" class="prose prose-sm dark:prose-invert max-w-none *:first:mt-0 *:last:mb-0">
-            <MDC :value="openedNoteContent" :cache-key="`graph-note-${openedNoteId}`" />
+          <div
+            v-else-if="openedNoteContent"
+            class="prose prose-sm dark:prose-invert max-w-none *:first:mt-0 *:last:mb-0"
+          >
+            <MDC
+              :value="openedNoteContent"
+              :cache-key="`graph-note-${openedNoteId}`"
+            />
           </div>
-          <p v-else class="text-xs text-slate-400 italic">No content</p>
+          <p
+            v-else
+            class="text-xs text-slate-400 italic"
+          >
+            No content
+          </p>
         </div>
       </template>
     </template>
