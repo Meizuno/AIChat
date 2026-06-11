@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { isTextUIPart, isToolUIPart, DefaultChatTransport } from 'ai'
 import { Chat } from '@ai-sdk/vue'
+import type { McpStatus } from '#shared/types/mcp'
+import type { PromptItem } from '#shared/types/prompt'
+import type { AppConfigResponse } from '#shared/types/config'
 
 function normalizeMarkdownForMdc(value: string) {
   const fences = (value.match(/^```/gm) || []).length
@@ -11,8 +14,6 @@ function normalizeMarkdownForMdc(value: string) {
 const { user, logout } = useAuth()
 const input = ref('')
 
-type ServerStatus = { name: string, connected: boolean, toolCount: number, tools: string[] }
-type McpStatus = { connected: boolean, toolCount: number, tools: string[], servers: ServerStatus[] }
 const mcpStatus = ref<McpStatus | null>(null)
 const mcpLoading = ref(false)
 
@@ -39,12 +40,7 @@ const fetchMcpStatus = async () => {
 
 onMounted(fetchMcpStatus)
 
-type PromptItem = { label: string, prompt?: string, route?: string }
-type PromptGroup = { server: string, prompts: PromptItem[] }
-type Pricing = { inputPerMillion: number, outputPerMillion: number }
-type AppConfig = { defaults: { welcomeMessage: string, botName: string }, promptGroups: PromptGroup[], pricing?: Pricing }
-
-const { data: appConfig } = await useFetch<AppConfig>('/api/config', { key: 'app-config' })
+const { data: appConfig } = await useFetch<AppConfigResponse>('/api/config', { key: 'app-config' })
 
 const welcomeMessage = computed(() => appConfig.value?.defaults.welcomeMessage ?? '')
 const botName = computed(() => appConfig.value?.defaults.botName ?? '')
@@ -55,7 +51,7 @@ const flatPrompts = computed(() =>
 
 const promptLoading = ref(false)
 
-async function useSuggestedPrompt(item: { label: string, prompt?: string, route?: string }) {
+async function useSuggestedPrompt(item: PromptItem) {
   if (promptLoading.value || chat.status !== 'ready') return
   if (item.route) {
     promptLoading.value = true
