@@ -7,7 +7,12 @@ import ProseNoteDetail from './content/ProseNoteDetail.global.vue'
 
 defineOptions({ inheritAttrs: false })
 
-const props = defineProps({
+// The template reads template props (code, language, filename) by
+// name from the auto-import scope, plus $props.class for the
+// pre-tag passthrough. We don't reference `defineProps`' return
+// value in the script — the underscore prefix tells the linter the
+// declaration is for template/$props consumption only.
+const _props = defineProps({
   code: { type: String, default: '' },
   language: { type: String, default: null },
   filename: { type: String, default: null },
@@ -15,6 +20,7 @@ const props = defineProps({
   meta: { type: String, default: null },
   class: { type: String, default: null }
 })
+void _props
 </script>
 
 <template>

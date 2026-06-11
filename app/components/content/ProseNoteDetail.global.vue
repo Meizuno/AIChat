@@ -14,7 +14,11 @@ const props = defineProps({
 })
 
 const parsed = computed(() => {
-  try { return JSON.parse(props.code.trim()) as NoteDetailPayload } catch { return null }
+  try {
+    return JSON.parse(props.code.trim()) as NoteDetailPayload
+  } catch {
+    return null
+  }
 })
 </script>
 
