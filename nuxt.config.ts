@@ -10,28 +10,6 @@ export default defineNuxtConfig({
     enabled: true
   },
 
-  css: ['~/assets/css/main.css'],
-
-  runtimeConfig: {
-    openaiApiKey: '',
-    authServiceUrl: '',
-    mcpApiKey: ''
-  },
-
-  mdc: {
-    highlight: {
-      theme: {
-        dark: 'github-dark',
-        light: 'github-light'
-      },
-      langs: [
-        'typescript', 'javascript', 'vue', 'python', 'bash', 'json', 'html', 'css', 'sql',
-        { name: 'chart', scopeName: 'source.chart', patterns: [], fileTypes: [], repository: {} },
-        { name: 'list', scopeName: 'source.list', patterns: [], fileTypes: [], repository: {} }
-      ]
-    }
-  },
-
   app: {
     head: {
       link: [
@@ -48,7 +26,39 @@ export default defineNuxtConfig({
     }
   },
 
+  css: ['~/assets/css/main.css'],
+
+  mdc: {
+    highlight: {
+      theme: {
+        dark: 'github-dark',
+        light: 'github-light'
+      },
+      langs: [
+        'typescript', 'javascript', 'vue', 'python', 'bash', 'json', 'html', 'css', 'sql',
+        { name: 'chart', scopeName: 'source.chart', patterns: [], fileTypes: [], repository: {} },
+        { name: 'list', scopeName: 'source.list', patterns: [], fileTypes: [], repository: {} }
+      ]
+    }
+  },
+
+  runtimeConfig: {
+    openaiApiKey: '',
+    authServiceUrl: '',
+    mcpApiKey: ''
+  },
+
   compatibilityDate: '2025-01-15',
+
+  // Auto-import server-side use-case functions from server/services
+  // alongside the default server/utils. Keeps "services/" expressive
+  // as the layer name while preserving the same auto-import ergonomics
+  // every other server module enjoys.
+  nitro: {
+    imports: {
+      dirs: ['server/services']
+    }
+  },
 
   eslint: {
     config: {

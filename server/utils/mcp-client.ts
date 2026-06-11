@@ -33,20 +33,13 @@ async function getOrCreateClient(userId: string, serverUrl: string): Promise<Cli
 }
 
 export async function createMcpClient(event: H3Event, serverName?: string): Promise<Client> {
-  const userId = (event.context.user as { id: string })?.id
-  if (!userId) throw createError({ statusCode: 401, statusMessage: 'Not authenticated' })
+  const userId = viewerId(event)
+  if (!userId) throw new Unauthorized()
 
   const servers = getMcpServers()
   const server = serverName
     ? servers.find(s => s.name === serverName)
     : servers[0]
-  if (!server) throw createError({ statusCode: 503, statusMessage: `MCP server${serverName ? ` "${serverName}"` : ''} not found` })
+  if (!server) throw new McpUnavailable(serverName)
   return getOrCreateClient(userId, server.url)
-}
-
-export async function callMcpTool<T>(client: Client, name: string, args: Record<string, unknown> = {}): Promise<T> {
-  const result = await client.callTool({ name, arguments: args })
-  const text = (result.content as { type: string, text: string }[]).find(c => c.type === 'text')?.text ?? '{}'
-  if (result.isError) throw createError({ statusCode: 502, statusMessage: text })
-  return JSON.parse(text) as T
 }
