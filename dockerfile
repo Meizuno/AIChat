@@ -1,8 +1,14 @@
 FROM node:22-alpine AS builder
 
-RUN npm install -g pnpm
-
 WORKDIR /app
+
+# Use the pnpm version pinned in `packageManager` so the image
+# install matches what produced the lockfile locally / in CI. The
+# previous `npm install -g pnpm` floated to whatever latest was at
+# build time, which produced a node_modules layout Nitro's tracer
+# couldn't fully follow (vue/server-renderer went missing from the
+# .output bundle and the container 500'd on every page render).
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
