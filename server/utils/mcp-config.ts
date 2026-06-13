@@ -7,6 +7,7 @@ export type McpServerConfig = { name: string, url: string, suggestedPrompts?: Su
 
 export type AppConfig = {
   mcpServers: McpServerConfig[]
+  model: string
   systemPrompt: string
   defaults: {
     currency: string
@@ -29,6 +30,7 @@ export function getConfig(): AppConfig {
   } catch {
     return {
       mcpServers: [],
+      model: 'gpt-5.4-nano',
       systemPrompt: 'You are a helpful financial assistant.',
       defaults: { currency: 'CZK', transactionType: 'expense', language: 'en', botName: '', welcomeMessage: '' }
     }
