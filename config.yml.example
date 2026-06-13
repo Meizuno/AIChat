@@ -2,6 +2,7 @@ mcpServers:
   - name: My MCP Server
     url: https://example.com/api/mcp
 
+model: gpt-5.5-mini
 systemPrompt: |
   Today's date: {date}.
   You are a helpful assistant with tool access.

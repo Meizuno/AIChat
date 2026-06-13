@@ -18,7 +18,7 @@ export async function streamChatResponse(event: H3Event, body: ChatBody) {
   const systemPrompt = getConfig().systemPrompt.replace('{date}', new Date().toISOString().slice(0, 10))
 
   const result = streamText({
-    model: openai('gpt-5.4-nano'),
+    model: openai(getConfig().model),
     system: systemPrompt,
     messages: await convertToModelMessages(body.messages as Parameters<typeof convertToModelMessages>[0]),
     tools,
