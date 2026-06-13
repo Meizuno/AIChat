@@ -53,36 +53,30 @@ export async function probeMcpServers(event: H3Event): Promise<McpStatus> {
  * even when one upstream is down (the model just has fewer tools).
  */
 export async function getChatTools(event: H3Event): Promise<ToolSet> {
+  const servers = getMcpServers()
+  // Slugs are computed across ALL servers up front so the de-dup
+  // suffixing is stable even if a later server fails to connect.
+  const slugs = buildServerSlugs(servers.map(s => s.name))
+
   const tools: ToolSet = {}
-  for (const server of getMcpServers()) {
+  for (const [i, server] of servers.entries()) {
+    const slug = slugs[i]!
     try {
       const client = await createMcpClient(event, server.name)
       const { tools: mcpTools } = await client.listTools()
-      const adapted = Object.fromEntries(mcpTools.map((t) => {
-        const raw = t.inputSchema as Record<string, unknown>
-        // Strip JSON-Schema meta we don't want to forward to the model.
-        const { $schema: _schemaUrl, additionalProperties: _addProps, ...rest } = raw
-        void _schemaUrl
-        void _addProps
-        const normalized: Record<string, unknown> = {
-          ...rest,
-          type: 'object',
-          properties: (rest?.properties as Record<string, unknown>) ?? {},
-          required: (rest?.required as string[]) ?? []
-        }
-        return [
-          t.name,
-          tool({
-            description: t.description ?? '',
-            inputSchema: jsonSchema(normalized),
-            execute: async (args) => {
-              const result = await client.callTool({ name: t.name, arguments: (args ?? {}) as Record<string, unknown> })
-              return result.content
-            }
-          })
-        ]
-      }))
-      Object.assign(tools, adapted)
+      for (const t of mcpTools) {
+        // Namespace the KEY the model sees so identically-named tools on
+        // different servers don't overwrite each other. The closure below
+        // still calls the ORIGINAL tool name on THIS server's client.
+        tools[namespaceToolName(slug, t.name)] = tool({
+          description: t.description ?? '',
+          inputSchema: jsonSchema(forwardInputSchema(t.inputSchema)),
+          execute: async (args) => {
+            const result = await client.callTool({ name: t.name, arguments: (args ?? {}) as Record<string, unknown> })
+            return flattenToolResult(result)
+          }
+        })
+      }
     } catch (err) {
       console.warn(`[MCP] Could not connect to ${server.name}, skipping:`, (err as Error).message)
     }
