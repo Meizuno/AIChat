@@ -44,8 +44,7 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     openaiApiKey: '',
-    authServiceUrl: '',
-    mcpApiKey: ''
+    authServiceUrl: ''
   },
 
   compatibilityDate: '2025-01-15',
