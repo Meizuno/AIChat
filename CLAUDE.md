@@ -181,8 +181,8 @@ ad-hoc `event.context.user` reads **is a refactor target.**
 
 ### 5. Fail-fast env validation
 
-- Required env (`NUXT_OPENAI_API_KEY`, `NUXT_AUTH_SERVICE_URL`,
-  `NUXT_MCP_API_KEY`) is validated **once at startup** with a zod schema
+- Required env (`NUXT_OPENAI_API_KEY`, `NUXT_AUTH_SERVICE_URL`) is
+  validated **once at startup** with a zod schema
   in a Nitro plugin (`server/plugins/validate-env.ts`), and the process
   **exits on failure** — not on the first request.
 - This replaces "throw 500 on first use of a missing key" patterns.

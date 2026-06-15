@@ -40,7 +40,9 @@ env is validated at startup — the server **exits** if it's missing or invalid
 |---|---|---|
 | `NUXT_OPENAI_API_KEY` | ✅ | OpenAI (or compatible) API key |
 | `NUXT_AUTH_SERVICE_URL` | ✅ | Base URL of the external auth service |
-| `NUXT_MCP_API_KEY` | ✅ | Shared key sent to MCP servers as `x-api-key` |
+
+MCP servers are authenticated with the signed-in user's Bearer access token
+(forwarded from the session), so no shared MCP key is required.
 
 The MCP server list, system prompt, default messaging, and pricing block all
 live in `config.yml` (mount it into the container; see `config.yml.example`).

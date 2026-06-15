@@ -3,8 +3,8 @@ import { McpUnavailable } from '../utils/errors'
 
 // Forward a /api/prompts/<x> call to the upstream MCP service that
 // owns the named tool. Each tool exposes a structured-prompt route
-// alongside its MCP endpoint; we proxy it with the same API key +
-// `x-user-id` headers the chat tools use.
+// alongside its MCP endpoint; we proxy it with the user's Bearer
+// access token — the same auth the chat tools use (see mcp-client).
 //
 // The wire shape is forwarded as-is — each upstream picks its own
 // response (a chart payload, a list snapshot, …) and the client
@@ -24,8 +24,6 @@ export async function fetchPromptThrough<T = unknown>(
   params?: Record<string, unknown>
 ): Promise<T> {
   await requireAuthUser(event)
-  const { mcpApiKey } = useRuntimeConfig(event)
-  const userId = viewerId(event)
   const baseUrl = getServiceBaseUrl(serverName)
 
   // $fetch's generic narrows to TypedInternalResponse when the URL is
@@ -34,10 +32,7 @@ export async function fetchPromptThrough<T = unknown>(
   // prove it. Pass through `unknown` to assert the intent.
   const result = await $fetch(`${baseUrl}${path}`, {
     params,
-    headers: {
-      'x-api-key': mcpApiKey,
-      'x-user-id': userId ?? ''
-    }
+    headers: { authorization: `Bearer ${event.context.accessToken ?? ''}` }
   })
   return result as T
 }
