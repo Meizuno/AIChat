@@ -44,7 +44,16 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     openaiApiKey: '',
-    authServiceUrl: ''
+    // Server-to-server base (token validate / refresh / me) — can be an
+    // internal Docker address; those calls never leave the host.
+    authServiceUrl: '',
+    // Browser-facing base for the OAuth login flow (the browser runs the
+    // Google dance on the auth server's own public domain). Empty → falls
+    // back to authServiceUrl (dev / single-URL setups).
+    authPublicUrl: '',
+    // Parent domain for the shared auth cookies (e.g. `.meizuno.com`) so one
+    // sign-in spans every *.meizuno.com app. Empty → host-only (dev).
+    cookieDomain: ''
   },
 
   compatibilityDate: '2025-01-15',

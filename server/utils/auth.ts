@@ -4,10 +4,26 @@ import { Unauthorized } from './errors'
 
 export type AuthUser = { id: string }
 
+// The auth service issues these cookies on COOKIE_DOMAIN (e.g. .meizuno.com),
+// so one sign-in is valid across every *.meizuno.com app. We read the SAME
+// names it sets, and only re-set them (with the same attributes) when we
+// rotate the pair on refresh. access_token is readable (SPAs may Bearer it),
+// refresh_token is httpOnly — mirroring the auth service exactly.
+const ACCESS_COOKIE = 'access_token'
+const REFRESH_COOKIE = 'refresh_token'
+const ACCESS_MAX_AGE = 60 * 15
+const REFRESH_MAX_AGE = 60 * 60 * 24 * 7
+
 // Secure cookies everywhere except the dev server (http localhost).
 // import.meta.dev is the Nuxt-native signal — avoids reading process.env
 // outside the env plugin (per architecture rule).
 const isSecure = () => !import.meta.dev
+
+// Parent domain the cookies are scoped to (NUXT_COOKIE_DOMAIN, e.g.
+// `.meizuno.com`). Empty in dev → host-only cookies on localhost.
+function cookieDomain(): string | undefined {
+  return (useRuntimeConfig().cookieDomain as string) || undefined
+}
 
 // SSR-internal-fetch dedup. The outer request refreshes once and
 // rotates the refresh token; the inner $fetch fired by `useFetch` in
@@ -47,10 +63,10 @@ function readCookie(event: H3Event, name: string): string {
 function readAccessToken(event: H3Event): string {
   const header = getHeader(event, 'authorization')
   if (header?.toLowerCase().startsWith('bearer ')) return header.slice(7).trim()
-  const direct = readCookie(event, 'aic_access')
+  const direct = readCookie(event, ACCESS_COOKIE)
   if (direct) return direct
   // Inner SSR fetch may only carry the (now rotated) refresh cookie.
-  const refresh = readCookie(event, 'aic_refresh')
+  const refresh = readCookie(event, REFRESH_COOKIE)
   return refresh ? (refreshedTokens.get(refresh) ?? '') : ''
 }
 
@@ -81,7 +97,7 @@ export async function authenticate(event: H3Event): Promise<AuthUser | null> {
  * request anonymous (the caller decides whether to throw 401).
  */
 export async function tryRefresh(event: H3Event): Promise<AuthUser | null> {
-  const refreshToken = readCookie(event, 'aic_refresh')
+  const refreshToken = readCookie(event, REFRESH_COOKIE)
   if (!refreshToken) return null
 
   try {
@@ -120,17 +136,21 @@ export function viewerId(event: H3Event): string | null {
   return event.context.user?.id ?? null
 }
 
+// Re-set the shared cookies after a rotation. Attributes mirror the auth
+// service so whichever side last writes them, the cookie stays identical.
 export function setAuthCookies(event: H3Event, accessToken: string, refreshToken: string) {
   const secure = isSecure()
-  setCookie(event, 'aic_access', accessToken, {
-    httpOnly: true, sameSite: 'lax', secure, path: '/'
+  const domain = cookieDomain()
+  setCookie(event, ACCESS_COOKIE, accessToken, {
+    httpOnly: false, sameSite: 'lax', secure, path: '/', domain, maxAge: ACCESS_MAX_AGE
   })
-  setCookie(event, 'aic_refresh', refreshToken, {
-    httpOnly: true, sameSite: 'lax', secure, path: '/', maxAge: 60 * 60 * 24 * 7
+  setCookie(event, REFRESH_COOKIE, refreshToken, {
+    httpOnly: true, sameSite: 'lax', secure, path: '/', domain, maxAge: REFRESH_MAX_AGE
   })
 }
 
 export function clearAuthCookies(event: H3Event) {
-  setCookie(event, 'aic_access', '', { path: '/', maxAge: 0 })
-  setCookie(event, 'aic_refresh', '', { path: '/', maxAge: 0 })
+  const domain = cookieDomain()
+  setCookie(event, ACCESS_COOKIE, '', { path: '/', domain, maxAge: 0 })
+  setCookie(event, REFRESH_COOKIE, '', { path: '/', domain, maxAge: 0 })
 }
