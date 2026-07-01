@@ -1,5 +1,10 @@
 # AI Chat
 
+<p align="center">
+  <img src="preview/demo.gif" alt="AI Chat demo — calling MCP tools" width="760"><br>
+  <sub>▶ <a href="preview/demo.mp4">full-resolution MP4</a></sub>
+</p>
+
 A self-hosted chat shell over OpenAI with MCP-driven tool calling. The model
 streams completions while the configured **MCP servers** (notes, money
 manager, recipes, …) expose typed tools that the model invokes mid-stream.
