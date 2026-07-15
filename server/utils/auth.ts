@@ -35,6 +35,15 @@ function cookieDomain(): string | undefined {
 // Map<old refresh token, new access token>
 const refreshedTokens = new Map<string, string>()
 
+// Single-flight refresh. Refresh tokens are SINGLE-USE — the auth service
+// rotates them and treats a second use of the same token as reuse, revoking
+// the whole family (a surprise logout). Parallel client XHRs (e.g. the MCP
+// status poll + a chat send) that all hit an expired access token would each
+// POST /refresh with the same cookie. Coalescing them onto ONE in-flight
+// /refresh call keeps rotation single-use. Map<old refresh token, in-flight>.
+type RefreshResult = { access: string, refresh: string } | null
+const inflightRefresh = new Map<string, Promise<RefreshResult>>()
+
 /** Validate a token against the external auth service. */
 export async function verifyAccessToken(token: string): Promise<AuthUser | null> {
   if (!token) return null
@@ -109,34 +118,61 @@ export async function authenticate(event: H3Event): Promise<AuthUser | null> {
  * dedup cache, and sets event.context.user. On failure: leaves the
  * request anonymous (the caller decides whether to throw 401).
  */
+// POST /refresh exactly once per refresh token, shared by all concurrent
+// callers via inflightRefresh. Returns the new pair (rotated refresh read
+// from Set-Cookie, never the body) or null.
+async function doRefresh(authServiceUrl: string, refreshToken: string): Promise<RefreshResult> {
+  try {
+    const res = await $fetch.raw<{ access_token: string }>(
+      `${authServiceUrl}/refresh`,
+      { method: 'POST', body: { refresh_token: refreshToken } }
+    )
+    const access = res._data?.access_token ?? ''
+    const refresh = rotatedRefresh(res.headers)
+    return access && refresh ? { access, refresh } : null
+  } catch {
+    return null
+  }
+}
+
 export async function tryRefresh(event: H3Event): Promise<AuthUser | null> {
   const refreshToken = readCookie(event, REFRESH_COOKIE)
   if (!refreshToken) return null
 
-  try {
-    const config = useRuntimeConfig()
-    const res = await $fetch.raw<{ access_token: string }>(
-      `${config.authServiceUrl}/refresh`,
-      { method: 'POST', body: { refresh_token: refreshToken } }
-    )
-    const newAccess = res._data?.access_token ?? ''
-    // The rotated refresh token rides only in the auth service's Set-Cookie,
-    // never the response body — read it from there to re-issue it.
-    const newRefresh = rotatedRefresh(res.headers)
-    if (!newAccess || !newRefresh) return null
-
-    setAuthCookies(event, newAccess, newRefresh)
-    refreshedTokens.set(refreshToken, newAccess)
-    setTimeout(() => refreshedTokens.delete(refreshToken), 5_000)
-
-    const user = await verifyAccessToken(newAccess)
-    if (!user) return null
-    event.context.user = user
-    event.context.accessToken = newAccess
-    return user
-  } catch {
-    return null
+  // A sibling request may have just rotated this token — reuse its result
+  // instead of POSTing /refresh again (which would be flagged as reuse).
+  const cached = refreshedTokens.get(refreshToken)
+  if (cached) {
+    const user = await verifyAccessToken(cached)
+    if (user) {
+      event.context.user = user
+      event.context.accessToken = cached
+      return user
+    }
   }
+
+  const { authServiceUrl } = useRuntimeConfig()
+  let inflight = inflightRefresh.get(refreshToken)
+  if (!inflight) {
+    inflight = doRefresh(authServiceUrl, refreshToken)
+    inflightRefresh.set(refreshToken, inflight)
+    void inflight.finally(() => inflightRefresh.delete(refreshToken))
+  }
+
+  const result = await inflight
+  if (!result) return null
+
+  // Each concurrent caller re-issues the (identical) rotated pair to its own
+  // response and records it for the SSR-internal-fetch dedup cache.
+  setAuthCookies(event, result.access, result.refresh)
+  refreshedTokens.set(refreshToken, result.access)
+  setTimeout(() => refreshedTokens.delete(refreshToken), 5_000)
+
+  const user = await verifyAccessToken(result.access)
+  if (!user) return null
+  event.context.user = user
+  event.context.accessToken = result.access
+  return user
 }
 
 /** Same shape as authenticate, but throws Unauthorized when no session is present. */
