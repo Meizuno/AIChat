@@ -56,7 +56,7 @@ server/                   ── SERVER (Nitro)
 ├── api/                  ── thin HTTP handlers (parse → validate → service → return)
 ├── services/             ── SERVER use-cases: chat, mcp, config, prompts
 ├── utils/                ── auto-imported helpers (auth, errors, env, mcp-client, mcp-config)
-├── middleware/           ── auth gate, request logging, prod page cache
+├── middleware/           ── auth gate, request logging
 ├── plugins/              ── startup hooks (env validation)
 └── types/                ── H3EventContext augmentation
 

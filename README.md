@@ -84,7 +84,7 @@ server/
   api/       thin HTTP handlers (parse → validate → service → return)
   services/  business logic (chat, mcp, config, prompts)
   utils/     auto-imported helpers — auth, errors, env, mcp-client, mcp-config
-  middleware/ auth gate, request logging, prod page cache
+  middleware/ auth gate, request logging
   plugins/   startup hooks (env validation)
   types/     H3EventContext augmentation
 shared/      cross-cutting zod schemas + types (#shared), client + server
