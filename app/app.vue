@@ -1,4 +1,8 @@
 <script setup lang="ts">
+// appendResponseHeader is a server (h3) util — it is NOT auto-imported into the
+// app/Vue context, so it must be imported explicitly. The `import.meta.server`
+// guard below keeps it out of the client bundle (Vite tree-shakes it).
+import { appendResponseHeader } from 'h3'
 import type { ViewerProfile } from '#shared/types/auth'
 
 useHead({
