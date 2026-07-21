@@ -12,7 +12,21 @@ useSeoMeta({ title: 'AI Chat' })
 const { user } = useAuth()
 const route = useRoute()
 
-const { data } = await useFetch<{ user: ViewerProfile }>('/api/auth/me')
+// SSR seam: /api/auth/me may rotate the auth cookies (access + refresh) when it
+// refreshes an expired session. Set-Cookie written inside an internal SSR fetch
+// does NOT reach the browser on its own — so without forwarding it, the client
+// keeps the old, now-consumed refresh token and the next request triggers reuse
+// detection (a surprise logout). Forward the rotated pair onto the document
+// response so it actually lands in the browser.
+const requestEvent = import.meta.server ? useRequestEvent() : null
+
+const { data } = await useFetch<{ user: ViewerProfile }>('/api/auth/me', {
+  onResponse({ response }) {
+    if (!import.meta.server || !requestEvent) return
+    const setCookies = response.headers.getSetCookie?.() ?? []
+    for (const cookie of setCookies) appendResponseHeader(requestEvent, 'set-cookie', cookie)
+  }
+})
 user.value = data.value?.user ?? null
 
 if (!user.value && route.path !== '/login') {
