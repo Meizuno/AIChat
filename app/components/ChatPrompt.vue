@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import type { ChatStatus } from 'ai'
+
 type PromptItem = { label: string, prompt?: string, route?: string }
 type PromptGroup = { server: string, prompts: PromptItem[] }
 
 defineProps<{
-  status: 'idle' | 'submitted' | 'streaming' | 'error' | 'ready'
+  status: ChatStatus
   error?: Error
   disabled?: boolean
   promptGroups?: PromptGroup[]

@@ -33,6 +33,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@ai-sdk/provider": "3.0.8",
     "@nuxt/eslint": "^1.15.2",
     "@nuxt/test-utils": "^4.0.3",
     "@types/js-yaml": "^4.0.9",

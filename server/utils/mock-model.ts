@@ -1,4 +1,5 @@
 import type { LanguageModel } from 'ai'
+import type { LanguageModelV3StreamPart } from '@ai-sdk/provider'
 
 // Dev-only stand-in for the OpenAI model. Streams a canned markdown reply
 // word-by-word so the chat UI, the streaming path, and the `data-usage`
@@ -23,21 +24,29 @@ export async function createMockModel(): Promise<LanguageModel> {
   // the exact text (spaces and newlines included).
   const words = reply.split(/(\s+)/).filter(Boolean)
 
+  // Typed as the provider stream-part union: ReadableStream<T> is invariant in
+  // T, so the chunks must match LanguageModelV3StreamPart exactly. Usage uses
+  // the v6 nested shape; streamText derives the flat data-usage from it.
+  const chunks: LanguageModelV3StreamPart[] = [
+    { type: 'text-start', id: '0' },
+    ...words.map(word => ({ type: 'text-delta' as const, id: '0', delta: word })),
+    { type: 'text-end', id: '0' },
+    {
+      type: 'finish',
+      finishReason: { unified: 'stop', raw: undefined },
+      usage: {
+        inputTokens: { total: 12, noCache: 12, cacheRead: 0, cacheWrite: 0 },
+        outputTokens: { total: words.length, text: words.length, reasoning: 0 }
+      }
+    }
+  ]
+
   return new MockLanguageModelV3({
     doStream: async () => ({
-      stream: simulateReadableStream({
+      stream: simulateReadableStream<LanguageModelV3StreamPart>({
         initialDelayInMs: 120,
         chunkDelayInMs: 30,
-        chunks: [
-          { type: 'text-start', id: '0' },
-          ...words.map(word => ({ type: 'text-delta' as const, id: '0', delta: word })),
-          { type: 'text-end', id: '0' },
-          {
-            type: 'finish',
-            finishReason: 'stop',
-            usage: { inputTokens: 12, outputTokens: words.length, totalTokens: 12 + words.length }
-          }
-        ]
+        chunks
       })
     })
   })
