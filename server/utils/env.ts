@@ -9,7 +9,8 @@ import { z } from 'zod'
 // corresponding feature by design.
 export const envSchema = z.object({
   NUXT_OPENAI_API_KEY: z.string().min(1, 'NUXT_OPENAI_API_KEY is required'),
-  NUXT_AUTH_SERVICE_URL: z.string().url('NUXT_AUTH_SERVICE_URL must be a valid URL')
+  NUXT_AUTH_SERVICE_URL: z.string().url('NUXT_AUTH_SERVICE_URL must be a valid URL'),
+  NUXT_DATABASE_URL: z.string().min(1, 'NUXT_DATABASE_URL is required')
 })
 
 export type Env = z.infer<typeof envSchema>

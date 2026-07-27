@@ -3,7 +3,8 @@ import { envSchema } from '../../../server/utils/env'
 
 const valid = {
   NUXT_OPENAI_API_KEY: 'sk-test-1234567890',
-  NUXT_AUTH_SERVICE_URL: 'https://auth.example.com'
+  NUXT_AUTH_SERVICE_URL: 'https://auth.example.com',
+  NUXT_DATABASE_URL: 'postgres://user:pass@localhost:5432/chat'
 }
 
 describe('envSchema', () => {

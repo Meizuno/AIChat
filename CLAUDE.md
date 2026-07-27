@@ -4,10 +4,17 @@ Instructions for AI agents working in this repository. This is a **Nuxt 4 /
 Nitro fullstack app** (Vue 3 + AI SDK + Model Context Protocol). The rules
 below mirror the sibling [notes](https://github.com/Meizuno/Notes) and
 [money-manager](https://github.com/Meizuno/MoneyManager) projects — same
-architectural discipline, adapted to the fact that **ai-chat has no
-database**. It is a chat shell that talks to OpenAI for completions, to MCP
-servers for tool calls, and to an external auth service for sessions. No
-records, no migrations, no Prisma.
+architectural discipline. It is a chat shell that talks to OpenAI for
+completions, to MCP servers for tool calls, and to an external auth service
+for sessions.
+
+**Persistence (added later).** ai-chat was originally stateless; it now owns
+**per-user chat history** in **Postgres via Prisma** — `Chat`, `Message`
+(parts stored as JSONB), and `Attachment` (image bytes as `bytea`, no S3).
+So the CRUD-app patterns below (Prisma, migrations, a scoped data-access
+layer, `viewerId(event)` filtering) **do apply now**, mirroring the siblings.
+Data access lives in `server/utils/chats.ts` + `server/utils/attachments.ts`,
+always scoped by the SSO `userId`.
 
 ---
 
@@ -19,19 +26,25 @@ In notes / money-manager, the dominant pattern is:
 HTTP handler → zod boundary → service → scoped data-access → Prisma
 ```
 
-ai-chat has **no scoped data-access layer**, because there is no per-user
-data to scope. The flow collapses to:
+Chat/completion traffic still has no per-record data — it collapses to:
 
 ```
 HTTP handler → zod boundary → service → external upstream (OpenAI / MCP / auth)
 ```
 
+...but **chat history** follows the full CRUD shape, scoped by `userId`:
+
+```
+HTTP handler (server/api/chats/*) → zod boundary → scoped data-access
+(server/utils/chats.ts) → Prisma
+```
+
 Everything that is shape-equivalent to the CRUD pattern (thin handlers, zod
 at the boundary, business logic in `server/services/*`, typed domain errors,
-fail-fast env validation, requestId logging, shared types in `#shared/`)
-**is the same here**. What's missing — Prisma, migrations, a `Note`/
-`Transaction` resource, a `viewerId(event)` filter — is missing because the
-problem doesn't exist, not because the discipline relaxed.
+fail-fast env validation, requestId logging, shared types in `#shared/`) is
+the same here. The chat-history slice adds the pieces that used to be absent
+— Prisma, migrations, a `Chat`/`Message` resource, and `viewerId(event)`
+scoping — for exactly the per-user data ai-chat now owns.
 
 ---
 
@@ -351,9 +364,11 @@ ad-hoc `event.context.user` reads **is a refactor target.**
 If tempted to add any of the following, **stop and confirm with the human
 first**:
 
-- ❌ **A database / Prisma / migrations.** ai-chat is stateless. If a
-  feature needs persistence, it belongs in a different MCP-backed service
-  (notes, money-manager, recipes-book) and ai-chat reaches it as a tool.
+- ⚠️ **More persisted domain data beyond chat history.** ai-chat now owns
+  per-user chats/messages/attachments in Postgres (see the persistence note
+  up top). That's the intended scope of its DB. *Other* domain data (notes,
+  transactions, recipes) still belongs in its own MCP-backed service that
+  ai-chat reaches as a tool — don't grow this schema into a general store.
 - ❌ **Repository pattern / ports & adapters.** There's no second
   backend to swap. The MCP client pool is already the right shape.
 - ❌ **A DI container or composition root.** Nitro auto-imports and

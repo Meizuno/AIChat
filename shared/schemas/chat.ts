@@ -7,6 +7,9 @@ import { z } from 'zod'
 // of *something* is present. Anything more would duplicate the SDK's
 // own schema and rot fast.
 export const chatBodySchema = z.object({
+  // Chat id chosen by the client (the AI SDK Chat instance). Optional so the
+  // endpoint still works without persistence; when present, the turn is saved.
+  id: z.string().uuid().optional(),
   messages: z.array(z.unknown())
 })
 

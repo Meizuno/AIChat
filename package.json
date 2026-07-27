@@ -6,11 +6,20 @@
     "build": "nuxt build",
     "dev": "nuxt dev",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare",
+    "postinstall": "nuxt prepare && prisma generate",
     "lint": "eslint .",
     "typecheck": "nuxt typecheck",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma"
+    ]
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.41",
@@ -20,6 +29,7 @@
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@nuxt/ui": "^4.10.0",
     "@nuxtjs/mdc": "^0.20.2",
+    "@prisma/client": "^6.19.3",
     "@types/d3-force": "^3.0.10",
     "ai": "^6.0.116",
     "chart.js": "^4.5.1",
@@ -41,6 +51,7 @@
     "@vue/test-utils": "^2.4.11",
     "eslint": "^10.0.3",
     "happy-dom": "^20.10.1",
+    "prisma": "^6.19.3",
     "typescript": "^5.9.3",
     "vitest": "^4.1.8",
     "vue-tsc": "^3.2.5"

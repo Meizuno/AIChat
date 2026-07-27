@@ -30,6 +30,13 @@ export class Unauthorized extends DomainError {
   }
 }
 
+// 404 — a resource scoped to the user doesn't exist (or isn't theirs).
+export class NotFound extends DomainError {
+  constructor(message?: string) {
+    super(404, 'Not Found', message)
+  }
+}
+
 // 503 — an upstream MCP server we tried to reach is unavailable. Used
 // by /api/chat / /api/mcp-status when no configured server resolves;
 // per-server failures inside listings stay soft (the response includes

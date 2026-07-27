@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { isTextUIPart, isToolUIPart, isFileUIPart, DefaultChatTransport } from 'ai'
-import type { FileUIPart } from 'ai'
+import type { FileUIPart, UIMessage } from 'ai'
 import { Chat } from '@ai-sdk/vue'
 import type { PromptItem } from '#shared/types/prompt'
 import type { AppConfigResponse } from '#shared/types/config'
@@ -26,8 +26,6 @@ const { data: appConfig } = await useFetch<AppConfigResponse>('/api/config', { k
 
 const welcomeMessage = computed(() => appConfig.value?.defaults.welcomeMessage ?? '')
 const botName = computed(() => appConfig.value?.defaults.botName ?? '')
-// Title shown in the chat page navbar (there's a single chat, so use the bot name).
-const chatName = computed(() => botName.value || 'AI Chat')
 const promptGroups = computed(() => appConfig.value?.promptGroups ?? [])
 const flatPrompts = computed(() =>
   promptGroups.value.flatMap(g => g.prompts.map(p => ({ ...p, server: g.server })))
@@ -36,15 +34,15 @@ const flatPrompts = computed(() =>
 const promptLoading = ref(false)
 
 async function useSuggestedPrompt(item: PromptItem) {
-  if (promptLoading.value || chat.status !== 'ready') return
+  if (promptLoading.value || chat.value.status !== 'ready') return
   if (item.route) {
     promptLoading.value = true
     const userId = crypto.randomUUID()
     const placeholderId = crypto.randomUUID()
 
     // Add user + loading assistant placeholder in a single assignment
-    chat.messages = [
-      ...chat.messages,
+    chat.value.messages = [
+      ...chat.value.messages,
       {
         id: userId,
         role: 'user',
@@ -69,8 +67,8 @@ async function useSuggestedPrompt(item: PromptItem) {
       // Replace placeholder with a *new* message id so Vue remounts MDC
       // (reusing the same id lets MDC's async compile cache overwrite the
       // populated content with the stale empty one on fast responses).
-      chat.messages = [
-        ...chat.messages.filter(m => m.id !== placeholderId),
+      chat.value.messages = [
+        ...chat.value.messages.filter(m => m.id !== placeholderId),
         {
           id: crypto.randomUUID(),
           role: 'assistant',
@@ -81,7 +79,7 @@ async function useSuggestedPrompt(item: PromptItem) {
       scrollAfterRender()
     } catch (err) {
       console.warn('[Suggested Prompt]', err)
-      chat.messages = chat.messages.filter(m => m.id !== placeholderId && m.id !== userId)
+      chat.value.messages = chat.value.messages.filter(m => m.id !== placeholderId && m.id !== userId)
     } finally {
       promptLoading.value = false
     }
@@ -99,20 +97,115 @@ async function handleLogout() {
   await navigateTo('/login')
 }
 
-const chat = new Chat({
-  transport: new DefaultChatTransport(),
-  onData(part) {
-    if (part.type === 'data-usage') {
-      accumulateUsage(part.data as { inputTokens?: number, outputTokens?: number, totalTokens?: number })
+// The active conversation. Its id is sent with each request so the server
+// persists the turn. Switching chats means a fresh Chat instance (the id is
+// fixed at construction), so `chat` is a shallowRef we reassign.
+const activeChatId = ref<string>(crypto.randomUUID())
+
+function makeChat(id: string, messages: UIMessage[] = []) {
+  return new Chat({
+    id,
+    messages,
+    transport: new DefaultChatTransport(),
+    onData(part) {
+      if (part.type === 'data-usage') {
+        accumulateUsage(part.data as { inputTokens?: number, outputTokens?: number, totalTokens?: number })
+      }
+    },
+    onError(error) {
+      console.error(error)
     }
-  },
-  onError(error) {
-    console.error(error)
-  }
+  })
+}
+
+const chat = shallowRef(makeChat(activeChatId.value))
+
+// Mobile slideover open state — closed after picking/creating a chat.
+const sidebarOpen = ref(false)
+
+// Chat history list for the sidebar.
+type ChatListItem = { id: string, title: string, updatedAt: string }
+const chats = ref<ChatListItem[]>([])
+async function refreshChats() {
+  chats.value = await $fetch<ChatListItem[]>('/api/chats')
+}
+onMounted(refreshChats)
+
+function newChat() {
+  activeChatId.value = crypto.randomUUID()
+  chat.value = makeChat(activeChatId.value)
+  sidebarOpen.value = false
+}
+
+async function openChat(id: string) {
+  sidebarOpen.value = false
+  if (id === activeChatId.value) return
+  const data = await $fetch<{ messages: Array<{ id: string, role: string, parts: unknown }> }>(`/api/chats/${id}`)
+  const messages = data.messages.map(m => ({ id: m.id, role: m.role, parts: m.parts, metadata: undefined })) as UIMessage[]
+  activeChatId.value = id
+  chat.value = makeChat(id, messages)
+}
+
+async function deleteChatById(id: string) {
+  await $fetch(`/api/chats/${id}`, { method: 'DELETE' })
+  await refreshChats()
+  if (id === activeChatId.value) newChat()
+}
+
+// Inline rename: clicking Rename swaps the title for an input.
+const editingId = ref<string | null>(null)
+const editingTitle = ref('')
+// When the dropdown closes it restores focus to its trigger, which blurs the
+// just-autofocused input. Ignore blur until this "armed" flag flips, so that
+// focus-restore blur doesn't submit before the user can type. Enter always
+// saves regardless.
+let renameArmed = false
+
+function startRename(c: ChatListItem) {
+  editingId.value = c.id
+  editingTitle.value = c.title
+  renameArmed = false
+  setTimeout(() => {
+    renameArmed = true
+  }, 250)
+}
+
+async function submitRename() {
+  const id = editingId.value
+  const title = editingTitle.value.trim()
+  editingId.value = null
+  if (!id || !title) return
+  await $fetch(`/api/chats/${id}`, { method: 'PATCH', body: { title } })
+  await refreshChats()
+}
+
+// Blur only saves once armed (skips the dropdown's focus-restore blur).
+function onRenameBlur() {
+  if (renameArmed) submitRename()
+}
+
+// Per-chat ⋯ menu (works on touch, unlike a hover-only button).
+function chatMenu(c: ChatListItem) {
+  return [[
+    { label: 'Rename', icon: 'i-lucide-pencil', onSelect: () => startRename(c) },
+    { label: 'Delete', icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: () => deleteChatById(c.id) }
+  ]]
+}
+
+// The active chat as it appears in the list (undefined for a brand-new,
+// unsaved chat). Drives the page-header title + its rename/delete menu.
+const activeChat = computed(() => chats.value.find(c => c.id === activeChatId.value))
+const currentTitle = computed(() => activeChat.value?.title || 'New chat')
+const currentChatMenu = computed(() => (activeChat.value ? chatMenu(activeChat.value) : []))
+
+// After a turn completes the title/updatedAt change server-side — refresh the
+// sidebar list so a new chat's derived title and ordering show up.
+watch(() => chat.value.status, (status, prev) => {
+  if (prev === 'streaming' && status === 'ready') refreshChats()
 })
 
 function onSubmit(files: FileUIPart[] = []) {
-  chat.sendMessage({ text: input.value, files })
+  chat.value.sendMessage({ text: input.value, files })
   input.value = ''
   // UChatMessages pins the new user message to the top and reserves space
   // below it (via --last-message-height) until the response fills the screen.
@@ -145,9 +238,9 @@ async function copyMessage(message: { id: string, parts?: unknown[] }) {
 }
 
 function canShowCopy(message: { id: string, role: string, parts?: unknown[] }) {
-  const lastMessage = chat.messages[chat.messages.length - 1]
+  const lastMessage = chat.value.messages[chat.value.messages.length - 1]
   const isLatestAssistant = message.role === 'assistant' && lastMessage?.id === message.id
-  const isGenerating = chat.status === 'submitted' || chat.status === 'streaming'
+  const isGenerating = chat.value.status === 'submitted' || chat.value.status === 'streaming'
   if (isLatestAssistant && isGenerating) return false
   return !!getMessageText(message)
 }
@@ -171,14 +264,17 @@ const {
   pulling: isPulling,
   ready: pullReady
 } = usePullToRefresh(scrollContainer, {
-  canPull: () => chat.status !== 'streaming' && chat.status !== 'submitted'
+  canPull: () => chat.value.status !== 'streaming' && chat.value.status !== 'submitted'
 })
 </script>
 
 <template>
   <UDashboardGroup class="h-svh">
     <!-- Sidebar: logo in the header, user component in the footer -->
-    <UDashboardSidebar toggle-side="right">
+    <UDashboardSidebar
+      v-model:open="sidebarOpen"
+      toggle-side="right"
+    >
       <template #header>
         <NuxtLink
           to="/"
@@ -193,7 +289,64 @@ const {
         </NuxtLink>
       </template>
 
-      <!-- Sidebar body intentionally empty (single chat, no nav yet) -->
+      <!-- New chat + history list -->
+      <UButton
+        icon="i-lucide-plus"
+        label="New chat"
+        color="neutral"
+        variant="soft"
+        block
+        class="justify-start"
+        @click="newChat"
+      />
+      <div class="flex-1 min-h-0 overflow-y-auto -mx-2 px-2 space-y-0.5">
+        <div
+          v-for="c in chats"
+          :key="c.id"
+          class="group flex items-center gap-1 rounded-lg pr-1"
+          :class="c.id === activeChatId ? 'bg-elevated' : 'hover:bg-elevated/60'"
+        >
+          <!-- Rename mode: inline input -->
+          <UInput
+            v-if="editingId === c.id"
+            v-model="editingTitle"
+            size="xs"
+            autofocus
+            class="flex-1 m-1"
+            @keydown.enter="submitRename"
+            @keydown.esc="editingId = null"
+            @blur="onRenameBlur"
+          />
+          <template v-else>
+            <button
+              class="flex-1 min-w-0 text-left text-sm px-2 py-1.5 truncate"
+              @click="openChat(c.id)"
+            >
+              {{ c.title }}
+            </button>
+            <UDropdownMenu
+              :items="chatMenu(c)"
+              :content="{ align: 'end' }"
+            >
+              <UButton
+                icon="i-lucide-ellipsis"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                class="text-muted"
+                aria-label="Chat options"
+                @click.stop
+              />
+            </UDropdownMenu>
+          </template>
+        </div>
+        <p
+          v-if="!chats.length"
+          class="text-xs text-muted text-center py-4"
+        >
+          No chats yet
+        </p>
+      </div>
 
       <template #footer>
         <!-- User component — click opens a popover with MCP status + logout -->
@@ -332,8 +485,41 @@ const {
 
     <!-- Main chat panel -->
     <UDashboardPanel>
-      <!-- Page header: chat name (+ sidebar toggle on mobile) -->
-      <UDashboardNavbar :title="chatName" />
+      <!-- Page header: current chat name + rename/delete (+ sidebar toggle on mobile) -->
+      <UDashboardNavbar>
+        <template #title>
+          <UInput
+            v-if="editingId === activeChatId"
+            v-model="editingTitle"
+            size="sm"
+            autofocus
+            @keydown.enter="submitRename"
+            @keydown.esc="editingId = null"
+            @blur="onRenameBlur"
+          />
+          <div
+            v-else
+            class="flex items-center gap-1 min-w-0"
+          >
+            <span class="truncate">{{ currentTitle }}</span>
+            <!-- Rename/delete the current chat, right next to its name -->
+            <UDropdownMenu
+              v-if="activeChat"
+              :items="currentChatMenu"
+              :content="{ align: 'start' }"
+            >
+              <UButton
+                icon="i-lucide-chevron-down"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                class="text-muted shrink-0"
+                aria-label="Chat options"
+              />
+            </UDropdownMenu>
+          </div>
+        </template>
+      </UDashboardNavbar>
 
       <div
         ref="scrollContainer"
@@ -433,7 +619,7 @@ const {
                   <!-- Claude-style user bubble: subtle neutral surface, right-aligned. -->
                   <p
                     v-if="getMessageText(message)"
-                    class="bg-elevated text-default rounded-xl px-4 py-2.5 whitespace-pre-wrap"
+                    class="bg-elevated text-default rounded-xl px-4 py-2.5 whitespace-pre-wrap wrap-break-word max-w-full"
                   >
                     {{ getMessageText(message) }}
                   </p>

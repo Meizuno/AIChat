@@ -44,6 +44,9 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     openaiApiKey: '',
+    // Postgres connection string (NUXT_DATABASE_URL). Validated at startup
+    // (server/plugins/validate-env), consumed by getPrisma.
+    databaseUrl: '',
     // Dev-only: when truthy (NUXT_MOCK_AI=1), /api/chat streams a canned
     // reply from a mock model instead of calling OpenAI — no API key, no
     // token spend, no network. Leave empty in production.

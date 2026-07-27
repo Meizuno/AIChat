@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("NUXT_DATABASE_URL")
+}
+
+// Per-user chat history. ai-chat was stateless by design; chats/messages
+// are the first persisted, per-user data. Everything is scoped by `user_id`
+// (the SSO user from viewerId(event)) in the data-access layer — a user can
+// only ever read/mutate their own chats.
+
+model Chat {
+  // UUID PK generated client-side so the id is known before insert (usable
+  // for optimistic creates + non-enumerable URLs).
+  id        String    @id @default(uuid()) @db.Uuid
+  user_id   String
+  title     String    @default("New chat") @db.VarChar(200)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+
+  @@index([user_id, updatedAt]) // list a user's chats, newest-first
+}
+
+model Message {
+  id        String   @id @default(uuid()) @db.Uuid
+  chat_id   String   @db.Uuid
+  chat      Chat     @relation(fields: [chat_id], references: [id], onDelete: Cascade)
+  role      String   @db.VarChar(20) // 'user' | 'assistant'
+  // The AI SDK UIMessage.parts array, stored opaquely — the part shape is
+  // version-coupled and validated downstream by convertToModelMessages.
+  // Image parts hold a `/api/attachments/{id}` URL (bytes live in Attachment),
+  // never a base64 data URL, to keep this row small.
+  parts     Json
+  // Optional token usage for the assistant turn (drives the cost readout).
+  usage     Json?
+  createdAt DateTime @default(now())
+
+  @@index([chat_id, createdAt]) // load a chat in order
+}
+
+// Image (and future file) attachments, stored as bytes in Postgres — no S3.
+// Referenced from a Message part via /api/attachments/{id}; served by an
+// auth-checked Nitro route that verifies the viewer owns it.
+model Attachment {
+  id        String   @id @default(uuid()) @db.Uuid
+  user_id   String
+  mediaType String   @db.VarChar(100)
+  filename  String?  @db.VarChar(300)
+  bytes     Bytes
+  createdAt DateTime @default(now())
+
+  @@index([user_id])
+}

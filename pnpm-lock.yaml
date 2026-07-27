@@ -29,6 +29,9 @@ importers:
       '@nuxtjs/mdc':
         specifier: ^0.20.2
         version: 0.20.2(magicast@0.5.2)
+      '@prisma/client':
+        specifier: ^6.19.3
+        version: 6.19.3(prisma@6.19.3(magicast@0.5.2)(typescript@5.9.3))(typescript@5.9.3)
       '@types/d3-force':
         specifier: ^3.0.10
         version: 3.0.10
@@ -87,6 +90,9 @@ importers:
       happy-dom:
         specifier: ^20.10.1
         version: 20.10.2
+      prisma:
+        specifier: ^6.19.3
+        version: 6.19.3(magicast@0.5.2)(typescript@5.9.3)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -5990,11 +5996,6 @@ packages:
     resolution: {integrity: sha512-qC9iz2FlN7DQl3+wjwn3802RTyjCx7sDvfQEXchwa6CWOx07/WVfh91gBmQ9fahw8snwGEWU3xGzOt4tFyHLxg==}
     engines: {node: '>= 0.6'}
 
-  srvx@0.11.12:
-    resolution: {integrity: sha512-AQfrGqntqVPXgP03pvBDN1KyevHC+KmYVqb8vVf4N+aomQqdhaZxjvoVp+AOm4u6x+GgNQY3MVzAUIn+TqwkOA==}
-    engines: {node: '>=20.16.0'}
-    hasBin: true
-
   srvx@0.11.16:
     resolution: {integrity: sha512-bp07zRuycfTY43IjAvvTFnmnJi8ikW0VFiHwOhhYcVW/L4xQ1XY4PAd4Nuum1rsA17C39zL7x+CDhrn5AL32Rw==}
     engines: {node: '>=20.16.0'}
@@ -7708,7 +7709,7 @@ snapshots:
       pkg-types: 2.3.0
       scule: 1.3.0
       semver: 7.7.4
-      srvx: 0.11.12
+      srvx: 0.11.16
       std-env: 3.10.0
       tinyclip: 0.1.12
       tinyexec: 1.0.4
@@ -8689,7 +8690,6 @@ snapshots:
     optionalDependencies:
       prisma: 6.19.3(magicast@0.5.2)(typescript@5.9.3)
       typescript: 5.9.3
-    optional: true
 
   '@prisma/config@6.19.3(magicast@0.5.2)':
     dependencies:
@@ -8699,13 +8699,10 @@ snapshots:
       empathic: 2.0.0
     transitivePeerDependencies:
       - magicast
-    optional: true
 
-  '@prisma/debug@6.19.3':
-    optional: true
+  '@prisma/debug@6.19.3': {}
 
-  '@prisma/engines-version@7.1.1-3.c2990dca591cba766e3b7ef5d9e8a84796e47ab7':
-    optional: true
+  '@prisma/engines-version@7.1.1-3.c2990dca591cba766e3b7ef5d9e8a84796e47ab7': {}
 
   '@prisma/engines@6.19.3':
     dependencies:
@@ -8713,19 +8710,16 @@ snapshots:
       '@prisma/engines-version': 7.1.1-3.c2990dca591cba766e3b7ef5d9e8a84796e47ab7
       '@prisma/fetch-engine': 6.19.3
       '@prisma/get-platform': 6.19.3
-    optional: true
 
   '@prisma/fetch-engine@6.19.3':
     dependencies:
       '@prisma/debug': 6.19.3
       '@prisma/engines-version': 7.1.1-3.c2990dca591cba766e3b7ef5d9e8a84796e47ab7
       '@prisma/get-platform': 6.19.3
-    optional: true
 
   '@prisma/get-platform@6.19.3':
     dependencies:
       '@prisma/debug': 6.19.3
-    optional: true
 
   '@remirror/core-constants@3.0.0': {}
 
@@ -10107,7 +10101,6 @@ snapshots:
       rc9: 2.1.2
     optionalDependencies:
       magicast: 0.5.2
-    optional: true
 
   c12@3.3.3(magicast@0.5.2):
     dependencies:
@@ -10423,8 +10416,7 @@ snapshots:
 
   deep-is@0.1.4: {}
 
-  deepmerge-ts@7.1.5:
-    optional: true
+  deepmerge-ts@7.1.5: {}
 
   deepmerge@4.3.1: {}
 
@@ -10483,8 +10475,7 @@ snapshots:
     dependencies:
       type-fest: 5.4.4
 
-  dotenv@16.6.1:
-    optional: true
+  dotenv@16.6.1: {}
 
   dotenv@17.3.1: {}
 
@@ -10523,7 +10514,6 @@ snapshots:
     dependencies:
       '@standard-schema/spec': 1.1.0
       fast-check: 3.23.2
-    optional: true
 
   electron-to-chromium@1.5.313: {}
 
@@ -10574,8 +10564,7 @@ snapshots:
 
   emoticon@4.1.0: {}
 
-  empathic@2.0.0:
-    optional: true
+  empathic@2.0.0: {}
 
   encodeurl@2.0.0: {}
 
@@ -10952,7 +10941,6 @@ snapshots:
   fast-check@3.23.2:
     dependencies:
       pure-rand: 6.1.0
-    optional: true
 
   fast-deep-equal@3.1.3: {}
 
@@ -12778,8 +12766,7 @@ snapshots:
 
   pathe@2.0.3: {}
 
-  perfect-debounce@1.0.0:
-    optional: true
+  perfect-debounce@1.0.0: {}
 
   perfect-debounce@2.1.0: {}
 
@@ -13060,7 +13047,6 @@ snapshots:
       typescript: 5.9.3
     transitivePeerDependencies:
       - magicast
-    optional: true
 
   process-nextick-args@2.0.1: {}
 
@@ -13182,8 +13168,7 @@ snapshots:
 
   punycode@2.3.1: {}
 
-  pure-rand@6.1.0:
-    optional: true
+  pure-rand@6.1.0: {}
 
   qs@6.15.0:
     dependencies:
@@ -13685,8 +13670,6 @@ snapshots:
 
   sqlstring@2.3.3:
     optional: true
-
-  srvx@0.11.12: {}
 
   srvx@0.11.16: {}
 
