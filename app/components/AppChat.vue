@@ -402,6 +402,7 @@ const {
         class="max-w-3xl mx-auto px-4"
         :messages="chat.messages"
         :status="chat.status"
+        :user="{ ui: { content: 'bg-transparent p-0 text-default' } }"
       >
         <template #indicator>
           <UIcon
@@ -414,25 +415,29 @@ const {
                MDC compiles asynchronously, which would briefly blank the
                bubble on submit. Assistant messages keep MDC for Markdown. -->
           <template v-if="message.role === 'user'">
-            <div
-              v-if="imageParts(message).length"
-              class="flex flex-wrap gap-2"
-              :class="{ 'mb-2': getMessageText(message) }"
-            >
-              <img
-                v-for="(img, i) in imageParts(message)"
-                :key="i"
-                :src="img.url"
-                :alt="img.filename"
-                class="max-h-60 max-w-full rounded-lg"
+            <div class="flex flex-col items-end gap-1.5">
+              <!-- Attachments: above the message, outside the bubble, small. -->
+              <div
+                v-if="imageParts(message).length"
+                dir="rtl"
+                class="grid grid-cols-2 gap-1.5"
               >
+                <img
+                  v-for="(img, i) in imageParts(message)"
+                  :key="i"
+                  :src="img.url"
+                  :alt="img.filename"
+                  class="size-24 object-cover rounded-xl"
+                >
+              </div>
+              <!-- Claude-style user bubble: subtle neutral surface, right-aligned. -->
+              <p
+                v-if="getMessageText(message)"
+                class="bg-elevated text-default rounded-xl px-4 py-2.5 whitespace-pre-wrap"
+              >
+                {{ getMessageText(message) }}
+              </p>
             </div>
-            <p
-              v-if="getMessageText(message)"
-              class="whitespace-pre-wrap"
-            >
-              {{ getMessageText(message) }}
-            </p>
           </template>
           <template
             v-for="(part, index) in message.parts"

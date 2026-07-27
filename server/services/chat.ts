@@ -1,5 +1,6 @@
 import { streamText, convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, stepCountIs } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
+import type { LanguageModel } from 'ai'
 import type { H3Event } from 'h3'
 import type { ChatBody } from '#shared/schemas/chat'
 
@@ -16,9 +17,18 @@ export async function streamChatResponse(event: H3Event, body: ChatBody) {
   // Dev short-circuit: a mock model streams a canned reply and no MCP tools
   // are wired (nothing to call), keeping local chat fully offline.
   const useMock = ['1', 'true', 'yes'].includes(String(mockAi).toLowerCase())
-  const model = useMock
-    ? await createMockModel()
-    : createOpenAI({ apiKey: openaiApiKey })(getConfig().model)
+  let model: LanguageModel
+  if (useMock) {
+    model = await createMockModel()
+  } else {
+    const openaiModel = createOpenAI({ apiKey: openaiApiKey })(getConfig().model)
+    // The OpenAI provider lists only http(s) image URLs as supported, so the
+    // AI SDK tries to HTTP-download data: URL image attachments and throws.
+    // The OpenAI API accepts data URLs inline, so mark them supported to skip
+    // the download and pass them straight through.
+    openaiModel.supportedUrls = { 'image/*': [/^https?:\/\//, /^data:image\//] }
+    model = openaiModel
+  }
   const tools = useMock ? undefined : await getChatTools(event)
 
   const systemPrompt = getConfig().systemPrompt.replace('{date}', new Date().toISOString().slice(0, 10))

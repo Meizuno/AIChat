@@ -5,18 +5,6 @@ export default defineAppConfig({
     colors: {
       primary: 'green',
       neutral: 'slate'
-    },
-    // User messages render with the `soft` variant (assistant uses `naked`),
-    // so theming `soft` colors only the user bubble — brand green, no
-    // per-instance CSS.
-    chatMessage: {
-      variants: {
-        variant: {
-          soft: {
-            content: 'bg-primary text-inverted'
-          }
-        }
-      }
     }
   }
 })
