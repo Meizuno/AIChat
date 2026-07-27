@@ -11,14 +11,20 @@ import type { ChatBody } from '#shared/schemas/chat'
 export async function streamChatResponse(event: H3Event, body: ChatBody) {
   await requireAuthUser(event)
 
-  const { openaiApiKey } = useRuntimeConfig(event)
-  const openai = createOpenAI({ apiKey: openaiApiKey })
-  const tools = await getChatTools(event)
+  const { openaiApiKey, mockAi } = useRuntimeConfig(event)
+
+  // Dev short-circuit: a mock model streams a canned reply and no MCP tools
+  // are wired (nothing to call), keeping local chat fully offline.
+  const useMock = ['1', 'true', 'yes'].includes(String(mockAi).toLowerCase())
+  const model = useMock
+    ? await createMockModel()
+    : createOpenAI({ apiKey: openaiApiKey })(getConfig().model)
+  const tools = useMock ? undefined : await getChatTools(event)
 
   const systemPrompt = getConfig().systemPrompt.replace('{date}', new Date().toISOString().slice(0, 10))
 
   const result = streamText({
-    model: openai(getConfig().model),
+    model,
     system: systemPrompt,
     messages: await convertToModelMessages(body.messages as Parameters<typeof convertToModelMessages>[0]),
     tools,

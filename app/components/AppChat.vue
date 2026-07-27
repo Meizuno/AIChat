@@ -129,7 +129,8 @@ const chat = new Chat({
 function onSubmit() {
   chat.sendMessage({ text: input.value })
   input.value = ''
-  scrollToBottom(true)
+  // UChatMessages pins the new user message to the top and reserves space
+  // below it (via --last-message-height) until the response fills the screen.
 }
 
 function getMessageText(message: { parts?: unknown[] }) {
@@ -170,27 +171,6 @@ function scrollAfterRender() {
   setTimeout(() => observer.disconnect(), 2000)
 }
 
-async function scrollToBottom(smooth = false) {
-  await nextTick()
-  if (scrollContainer.value) {
-    scrollContainer.value.scrollTo({
-      top: scrollContainer.value.scrollHeight,
-      behavior: smooth ? 'smooth' : 'instant'
-    })
-  }
-}
-
-watch(() => chat.status, (status) => {
-  if (status === 'submitted' || status === 'ready') scrollToBottom(true)
-})
-
-function isAssistantThinking(message: { id: string, role: string }) {
-  const lastMessage = chat.messages[chat.messages.length - 1]
-  const isLatestAssistant = message.role === 'assistant' && lastMessage?.id === message.id
-  const isGenerating = chat.status === 'submitted' || chat.status === 'streaming'
-  return isLatestAssistant && (isGenerating || promptLoading.value)
-}
-
 // Pull down past the threshold = clear the chat (full-page reload).
 // Disabled while a stream is in flight so a long completion can't
 // be killed by an errant gesture.
@@ -206,7 +186,7 @@ const {
 <template>
   <div
     ref="scrollContainer"
-    class="h-screen overflow-y-auto flex flex-col"
+    class="h-screen overflow-y-auto flex flex-col scroll-pt-16"
   >
     <!-- Header -->
     <div class="sticky top-0 z-20 shrink-0 border-b border-default/50 bg-default/20 backdrop-blur-xl">
@@ -414,12 +394,20 @@ const {
         class="max-w-3xl mx-auto px-4"
         :messages="chat.messages"
         :status="chat.status"
-        :user="{ ui: { actions: '!opacity-100', content: 'rounded-3xl px-4 py-2', root: 'last:!h-fit last:!min-h-0' } }"
-        :assistant="{ ui: { actions: '!opacity-100', root: 'last:!h-fit last:!min-h-0' } }"
       >
         <template #content="{ message }">
+          <!-- User text is plain: render it directly so it shows instantly.
+               MDC compiles asynchronously, which would briefly blank the
+               bubble on submit. Assistant messages keep MDC for Markdown. -->
+          <p
+            v-if="message.role === 'user'"
+            class="whitespace-pre-wrap"
+          >
+            {{ getMessageText(message) }}
+          </p>
           <template
             v-for="(part, index) in message.parts"
+            v-else
             :key="`${message.id}-${part.type}-${index}`"
           >
             <MDC
@@ -432,13 +420,8 @@ const {
         </template>
         <template #actions="{ message }">
           <div class="flex items-center gap-2">
-            <UChatShimmer
-              v-if="isAssistantThinking(message)"
-              text="Thinking…"
-              class="text-sm text-muted"
-            />
             <UBadge
-              v-else-if="message.role === 'assistant' && message.parts.some(p => isToolUIPart(p))"
+              v-if="message.role === 'assistant' && message.parts.some(p => isToolUIPart(p))"
               label="MCP"
               color="success"
               variant="subtle"

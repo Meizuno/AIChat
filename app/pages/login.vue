@@ -1,11 +1,25 @@
 <script setup lang="ts">
 const { loggedIn } = useAuth()
 const route = useRoute()
+const router = useRouter()
+const toast = useToast()
 const error = computed(() => route.query.error as string | undefined)
 
 if (loggedIn.value) {
   await navigateTo('/')
 }
+
+onMounted(() => {
+  if (error.value !== 'auth_failed') return
+  toast.add({
+    title: 'Access denied',
+    description: 'Account does not have access.',
+    color: 'error',
+    icon: 'i-lucide-lock'
+  })
+  // Drop the query param so a refresh doesn't re-show the toast.
+  router.replace({ query: {} })
+})
 
 function signIn() {
   window.location.href = '/api/auth/google'
