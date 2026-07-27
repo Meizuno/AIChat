@@ -26,6 +26,8 @@ const { data: appConfig } = await useFetch<AppConfigResponse>('/api/config', { k
 
 const welcomeMessage = computed(() => appConfig.value?.defaults.welcomeMessage ?? '')
 const botName = computed(() => appConfig.value?.defaults.botName ?? '')
+// Title shown in the chat page navbar (there's a single chat, so use the bot name).
+const chatName = computed(() => botName.value || 'AI Chat')
 const promptGroups = computed(() => appConfig.value?.promptGroups ?? [])
 const flatPrompts = computed(() =>
   promptGroups.value.flatMap(g => g.prompts.map(p => ({ ...p, server: g.server })))
@@ -96,24 +98,6 @@ async function handleLogout() {
   await logout()
   await navigateTo('/login')
 }
-
-const userMenuItems = computed(() => [
-  [
-    {
-      label: user.value?.name ?? '',
-      avatar: { src: user.value?.picture ?? undefined, alt: user.value?.name ?? undefined },
-      disabled: true
-    }
-  ],
-  [
-    {
-      label: 'Log out',
-      icon: 'i-lucide-log-out',
-      color: 'error' as const,
-      onSelect: handleLogout
-    }
-  ]
-])
 
 const chat = new Chat({
   transport: new DefaultChatTransport(),
@@ -192,60 +176,81 @@ const {
 </script>
 
 <template>
-  <div
-    ref="scrollContainer"
-    class="h-screen overflow-y-auto flex flex-col scroll-pt-16"
-  >
-    <!-- Header -->
-    <div class="sticky top-0 z-20 shrink-0 border-b border-default/50 bg-default/20 backdrop-blur-xl">
-      <div class="flex items-center justify-between max-w-3xl mx-auto px-4 py-1">
-        <!-- Brand -->
-        <div class="flex items-center gap-2">
+  <UDashboardGroup class="h-svh">
+    <!-- Sidebar: logo in the header, user component in the footer -->
+    <UDashboardSidebar toggle-side="right">
+      <template #header>
+        <NuxtLink
+          to="/"
+          class="flex items-center gap-2"
+        >
           <img
             src="/favicon.svg"
             class="w-6 h-6"
             alt="logo"
           >
-          <p class="font-semibold text-sm hidden xs:block">
-            Meizuno AI
-          </p>
-        </div>
+          <span class="font-semibold text-sm">Meizuno AI</span>
+        </NuxtLink>
+      </template>
 
-        <!-- Right: MCP button + user dropdown -->
-        <div class="flex items-center gap-1">
-          <!-- MCP servers popover -->
-          <UPopover :content="{ align: 'end' }">
-            <UButton
-              variant="ghost"
-              color="neutral"
-              size="sm"
-              class="px-2"
-            >
-              <!-- SVG MCP letters icon — color reflects overall status -->
-              <svg
-                width="35"
-                height="20"
-                viewBox="0 0 34 18"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
-                :class="mcpStatus === null || mcpLoading ? 'animate-pulse' : ''"
-              >
-                <text
-                  x="1"
-                  y="14"
-                  font-family="ui-monospace, 'Courier New', monospace"
-                  font-size="18"
-                  font-weight="800"
-                  letter-spacing="0.5"
-                  :fill="mcpColor"
-                >MCP</text>
-              </svg>
-            </UButton>
+      <!-- Sidebar body intentionally empty (single chat, no nav yet) -->
 
-            <template #content>
-              <div class="p-3 w-64">
-                <div class="flex items-center justify-between mb-3">
+      <template #footer>
+        <!-- User component — click opens a popover with MCP status + logout -->
+        <UPopover
+          :content="{ side: 'top', align: 'start', sideOffset: 8 }"
+          class="w-full"
+        >
+          <UButton
+            variant="ghost"
+            color="neutral"
+            class="w-full justify-start gap-2"
+          >
+            <UAvatar
+              :src="user?.picture ?? undefined"
+              :alt="user?.name ?? undefined"
+              size="2xs"
+            />
+            <span class="flex-1 text-left text-sm font-medium truncate">{{ user?.name }}</span>
+            <!-- At-a-glance MCP health dot -->
+            <span
+              class="size-2 rounded-full shrink-0"
+              :class="{ 'animate-pulse': mcpStatus === null || mcpLoading }"
+              :style="{ backgroundColor: mcpColor }"
+            />
+            <UIcon
+              name="i-lucide-chevron-up"
+              class="size-4 text-muted shrink-0"
+            />
+          </UButton>
+
+          <template #content>
+            <div class="w-72 p-2 space-y-2">
+              <!-- User header -->
+              <div class="flex items-center gap-2 px-1 py-1">
+                <UAvatar
+                  :src="user?.picture ?? undefined"
+                  :alt="user?.name ?? undefined"
+                  size="sm"
+                />
+                <div class="min-w-0">
+                  <p class="text-sm font-medium truncate">
+                    {{ user?.name }}
+                  </p>
+                  <p
+                    v-if="user?.email"
+                    class="text-xs text-muted truncate"
+                  >
+                    {{ user.email }}
+                  </p>
+                </div>
+              </div>
+
+              <USeparator />
+
+              <!-- MCP servers status -->
+              <div>
+                <div class="flex items-center justify-between px-1 mb-1">
                   <p class="text-xs font-semibold text-highlighted uppercase tracking-wider">
                     MCP Servers
                   </p>
@@ -259,10 +264,9 @@ const {
                   />
                 </div>
 
-                <!-- Per-server rows -->
                 <div
                   v-if="mcpStatus?.servers?.length"
-                  class="space-y-1"
+                  class="space-y-0.5"
                 >
                   <div
                     v-for="server in mcpStatus.servers"
@@ -285,7 +289,6 @@ const {
                   </div>
                 </div>
 
-                <!-- Loading skeleton -->
                 <div
                   v-else-if="mcpStatus === null"
                   class="space-y-1"
@@ -301,7 +304,6 @@ const {
                   </div>
                 </div>
 
-                <!-- No servers configured -->
                 <p
                   v-else
                   class="text-xs text-muted text-center py-2"
@@ -309,200 +311,200 @@ const {
                   No servers configured
                 </p>
               </div>
-            </template>
-          </UPopover>
 
-          <!-- User dropdown -->
-          <UDropdownMenu
-            :items="userMenuItems"
-            :ui="{ content: 'w-56' }"
-          >
-            <UButton
-              variant="ghost"
-              color="neutral"
-              size="sm"
-              class="gap-1.5 px-2"
-            >
-              <UAvatar
-                :src="user?.picture ?? undefined"
-                :alt="user?.name ?? undefined"
-                size="xs"
-              />
-              <span class="text-xs font-medium hidden sm:block max-w-28 truncate">{{ user?.name }}</span>
-              <UIcon
-                name="i-lucide-chevron-down"
-                class="size-3 text-muted shrink-0"
-              />
-            </UButton>
-          </UDropdownMenu>
-        </div>
-      </div>
-    </div>
+              <USeparator />
 
-    <!-- Pull-to-refresh indicator -->
-    <div
-      class="shrink-0 overflow-hidden flex items-center justify-center"
-      :class="{ 'transition-[height] duration-200 ease-out': !isPulling }"
-      :style="{ height: pullDistance + 'px' }"
-    >
-      <div class="flex items-center gap-2 text-xs text-muted">
-        <UIcon
-          :name="pullReady ? 'i-lucide-refresh-cw' : 'i-lucide-arrow-down'"
-          class="size-4 transition-transform"
-          :class="{ 'text-primary': pullReady }"
-        />
-        <span :class="{ 'text-primary': pullReady }">{{ pullReady ? 'Release to refresh' : 'Pull to refresh' }}</span>
-      </div>
-    </div>
-
-    <div class="flex-1 pt-4">
-      <div
-        v-if="chat.messages.length === 0 && welcomeMessage"
-        class="max-w-3xl mx-auto px-4 py-8 sm:py-16 flex flex-col items-center gap-4 sm:gap-6"
-      >
-        <div class="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-primary/10 flex items-center justify-center">
-          <img
-            src="/favicon.svg"
-            class="w-6 h-6 sm:w-8 sm:h-8"
-            alt="bot icon"
-          >
-        </div>
-        <div class="text-center">
-          <p
-            v-if="botName"
-            class="font-semibold text-base"
-          >
-            {{ botName }}
-          </p>
-          <p class="text-sm text-muted mt-1">
-            {{ welcomeMessage }}
-          </p>
-        </div>
-        <div
-          v-if="flatPrompts.length"
-          class="flex flex-wrap justify-center gap-2 max-w-2xl"
-        >
-          <button
-            v-for="item in flatPrompts"
-            :key="`${item.server}:${item.label}`"
-            class="group flex items-center gap-2 rounded-xl border border-default bg-default/50 p-1 pr-3 text-left hover:bg-elevated hover:border-primary/50 transition-all cursor-pointer"
-            @click="useSuggestedPrompt(item)"
-          >
-            <div class="size-6 shrink-0 rounded-lg bg-primary/10 flex items-center justify-center">
-              <UIcon
-                :name="item.route ? 'i-lucide-zap' : 'i-lucide-message-circle'"
-                class="size-4 text-primary"
+              <UButton
+                icon="i-lucide-log-out"
+                label="Log out"
+                color="error"
+                variant="ghost"
+                size="sm"
+                block
+                class="justify-start"
+                @click="handleLogout"
               />
             </div>
-            <span class="flex-1 text-sm font-medium leading-tight truncate">{{ item.label }}</span>
-          </button>
-        </div>
-      </div>
-      <UChatMessages
-        class="max-w-3xl mx-auto px-4"
-        :messages="chat.messages"
-        :status="chat.status"
-        :user="{ ui: { content: 'bg-transparent p-0 text-default' } }"
+          </template>
+        </UPopover>
+      </template>
+    </UDashboardSidebar>
+
+    <!-- Main chat panel -->
+    <UDashboardPanel>
+      <!-- Page header: chat name (+ sidebar toggle on mobile) -->
+      <UDashboardNavbar :title="chatName" />
+
+      <div
+        ref="scrollContainer"
+        class="flex-1 min-h-0 overflow-y-auto flex flex-col scroll-pt-16"
       >
-        <template #indicator>
-          <UIcon
-            name="i-svg-spinners-3-dots-scale"
-            class="size-12 text-muted"
-          />
-        </template>
-        <template #content="{ message }">
-          <!-- User text is plain: render it directly so it shows instantly.
-               MDC compiles asynchronously, which would briefly blank the
-               bubble on submit. Assistant messages keep MDC for Markdown. -->
-          <template v-if="message.role === 'user'">
-            <div class="flex flex-col items-end gap-1.5">
-              <!-- Attachments: above the message, outside the bubble, small. -->
-              <div
-                v-if="imageParts(message).length"
-                dir="rtl"
-                class="grid grid-cols-2 gap-1.5"
+        <!-- Pull-to-refresh indicator -->
+        <div
+          class="shrink-0 overflow-hidden flex items-center justify-center"
+          :class="{ 'transition-[height] duration-200 ease-out': !isPulling }"
+          :style="{ height: pullDistance + 'px' }"
+        >
+          <div class="flex items-center gap-2 text-xs text-muted">
+            <UIcon
+              :name="pullReady ? 'i-lucide-refresh-cw' : 'i-lucide-arrow-down'"
+              class="size-4 transition-transform"
+              :class="{ 'text-primary': pullReady }"
+            />
+            <span :class="{ 'text-primary': pullReady }">{{ pullReady ? 'Release to refresh' : 'Pull to refresh' }}</span>
+          </div>
+        </div>
+
+        <div class="flex-1 pt-4">
+          <div
+            v-if="chat.messages.length === 0 && welcomeMessage"
+            class="max-w-3xl mx-auto px-4 py-8 sm:py-16 flex flex-col items-center gap-4 sm:gap-6"
+          >
+            <div class="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-primary/10 flex items-center justify-center">
+              <img
+                src="/favicon.svg"
+                class="w-6 h-6 sm:w-8 sm:h-8"
+                alt="bot icon"
               >
-                <img
-                  v-for="(img, i) in imageParts(message)"
-                  :key="i"
-                  :src="img.url"
-                  :alt="img.filename"
-                  class="size-24 object-cover rounded-xl"
-                >
-              </div>
-              <!-- Claude-style user bubble: subtle neutral surface, right-aligned. -->
+            </div>
+            <div class="text-center">
               <p
-                v-if="getMessageText(message)"
-                class="bg-elevated text-default rounded-xl px-4 py-2.5 whitespace-pre-wrap"
+                v-if="botName"
+                class="font-semibold text-base"
               >
-                {{ getMessageText(message) }}
+                {{ botName }}
+              </p>
+              <p class="text-sm text-muted mt-1">
+                {{ welcomeMessage }}
               </p>
             </div>
-          </template>
-          <template
-            v-for="(part, index) in message.parts"
-            v-else
-            :key="`${message.id}-${part.type}-${index}`"
-          >
-            <MDC
-              v-if="isTextUIPart(part)"
-              :value="normalizeMarkdownForMdc(part.text)"
-              :cache-key="`${message.id}-${index}-${Math.floor(part.text.length / 80)}`"
-              class="*:first:mt-0 *:last:mb-0"
-            />
-          </template>
-        </template>
-        <template #actions="{ message }">
-          <div class="flex items-center gap-2">
-            <UBadge
-              v-if="message.role === 'assistant' && message.parts.some(p => isToolUIPart(p))"
-              label="MCP"
-              color="success"
-              variant="subtle"
-              size="sm"
-            />
-            <UButton
-              v-if="canShowCopy(message)"
-              :icon="copiedMessageId === message.id ? 'i-lucide-check' : 'i-lucide-copy'"
-              variant="ghost"
-              color="neutral"
-              size="xs"
-              :aria-label="copiedMessageId === message.id ? 'Copied' : 'Copy message'"
-              @click="copyMessage(message)"
-            />
+            <div
+              v-if="flatPrompts.length"
+              class="flex flex-wrap justify-center gap-2 max-w-2xl"
+            >
+              <button
+                v-for="item in flatPrompts"
+                :key="`${item.server}:${item.label}`"
+                class="group flex items-center gap-2 rounded-xl border border-default bg-default/50 p-1 pr-3 text-left hover:bg-elevated hover:border-primary/50 transition-all cursor-pointer"
+                @click="useSuggestedPrompt(item)"
+              >
+                <div class="size-6 shrink-0 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <UIcon
+                    :name="item.route ? 'i-lucide-zap' : 'i-lucide-message-circle'"
+                    class="size-4 text-primary"
+                  />
+                </div>
+                <span class="flex-1 text-sm font-medium leading-tight truncate">{{ item.label }}</span>
+              </button>
+            </div>
           </div>
-        </template>
-      </UChatMessages>
-    </div>
+          <UChatMessages
+            class="max-w-3xl mx-auto px-4"
+            :messages="chat.messages"
+            :status="chat.status"
+            :user="{ ui: { content: 'bg-transparent p-0 text-default' } }"
+          >
+            <template #indicator>
+              <UIcon
+                name="i-svg-spinners-3-dots-scale"
+                class="size-12 text-muted"
+              />
+            </template>
+            <template #content="{ message }">
+              <!-- User text is plain: render it directly so it shows instantly.
+                   MDC compiles asynchronously, which would briefly blank the
+                   bubble on submit. Assistant messages keep MDC for Markdown. -->
+              <template v-if="message.role === 'user'">
+                <div class="flex flex-col items-end gap-1.5">
+                  <!-- Attachments: above the message, outside the bubble, small. -->
+                  <div
+                    v-if="imageParts(message).length"
+                    dir="rtl"
+                    class="grid grid-cols-2 gap-1.5"
+                  >
+                    <img
+                      v-for="(img, i) in imageParts(message)"
+                      :key="i"
+                      :src="img.url"
+                      :alt="img.filename"
+                      class="size-24 object-cover rounded-xl"
+                    >
+                  </div>
+                  <!-- Claude-style user bubble: subtle neutral surface, right-aligned. -->
+                  <p
+                    v-if="getMessageText(message)"
+                    class="bg-elevated text-default rounded-xl px-4 py-2.5 whitespace-pre-wrap"
+                  >
+                    {{ getMessageText(message) }}
+                  </p>
+                </div>
+              </template>
+              <template
+                v-for="(part, index) in message.parts"
+                v-else
+                :key="`${message.id}-${part.type}-${index}`"
+              >
+                <MDC
+                  v-if="isTextUIPart(part)"
+                  :value="normalizeMarkdownForMdc(part.text)"
+                  :cache-key="`${message.id}-${index}-${Math.floor(part.text.length / 80)}`"
+                  class="*:first:mt-0 *:last:mb-0"
+                />
+              </template>
+            </template>
+            <template #actions="{ message }">
+              <div class="flex items-center gap-2">
+                <UBadge
+                  v-if="message.role === 'assistant' && message.parts.some(p => isToolUIPart(p))"
+                  label="MCP"
+                  color="success"
+                  variant="subtle"
+                  size="sm"
+                />
+                <UButton
+                  v-if="canShowCopy(message)"
+                  :icon="copiedMessageId === message.id ? 'i-lucide-check' : 'i-lucide-copy'"
+                  variant="ghost"
+                  color="neutral"
+                  size="xs"
+                  :aria-label="copiedMessageId === message.id ? 'Copied' : 'Copy message'"
+                  @click="copyMessage(message)"
+                />
+              </div>
+            </template>
+          </UChatMessages>
+        </div>
 
-    <div
-      data-chat-footer
-      class="sticky bottom-0 z-20 shrink-0 p-6 bg-opacity-0"
-    >
-      <div class="max-w-3xl mx-auto relative">
-        <Transition name="usage">
-          <div
-            v-if="usage"
-            class="absolute -top-6 right-1 flex items-center gap-3 text-xs text-muted"
-          >
-            <span>↑ {{ usage.inputTokens?.toLocaleString() }}</span>
-            <span>↓ {{ usage.outputTokens?.toLocaleString() }}</span>
-            <span class="text-highlighted font-medium">{{ estimatedCost }}</span>
+        <div
+          data-chat-footer
+          class="sticky bottom-0 z-20 shrink-0 p-6 bg-opacity-0"
+        >
+          <div class="max-w-3xl mx-auto relative">
+            <Transition name="usage">
+              <div
+                v-if="usage"
+                class="absolute -top-6 right-1 flex items-center gap-3 text-xs text-muted"
+              >
+                <span>↑ {{ usage.inputTokens?.toLocaleString() }}</span>
+                <span>↓ {{ usage.outputTokens?.toLocaleString() }}</span>
+                <span class="text-highlighted font-medium">{{ estimatedCost }}</span>
+              </div>
+            </Transition>
+            <ChatPrompt
+              v-model="input"
+              :status="chat.status"
+              :error="chat.error"
+              :disabled="promptLoading"
+              :prompt-groups="promptGroups"
+              @submit="onSubmit"
+              @stop="chat.stop()"
+              @prompt="useSuggestedPrompt($event)"
+            />
           </div>
-        </Transition>
-        <ChatPrompt
-          v-model="input"
-          :status="chat.status"
-          :error="chat.error"
-          :disabled="promptLoading"
-          :prompt-groups="promptGroups"
-          @submit="onSubmit"
-          @stop="chat.stop()"
-          @prompt="useSuggestedPrompt($event)"
-        />
+        </div>
       </div>
-    </div>
-  </div>
+    </UDashboardPanel>
+  </UDashboardGroup>
 </template>
 
 <style scoped>
