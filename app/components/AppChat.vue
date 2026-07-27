@@ -395,6 +395,12 @@ const {
         :messages="chat.messages"
         :status="chat.status"
       >
+        <template #indicator>
+          <UIcon
+            name="i-svg-spinners-3-dots-scale"
+            class="size-12 text-muted"
+          />
+        </template>
         <template #content="{ message }">
           <!-- User text is plain: render it directly so it shows instantly.
                MDC compiles asynchronously, which would briefly blank the

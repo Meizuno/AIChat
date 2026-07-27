@@ -94,3 +94,14 @@ function selectPrompt(item: PromptItem) {
     </template>
   </UChatPrompt>
 </template>
+
+<style scoped>
+/* iOS zooms the page when focusing an input whose font-size is < 16px.
+   Keep the compact text on desktop (mouse), but use 16px on touch devices
+   to suppress the zoom without disabling pinch-to-zoom. */
+@media (pointer: coarse) {
+  :deep(textarea) {
+    font-size: 16px;
+  }
+}
+</style>

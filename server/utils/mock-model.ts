@@ -43,8 +43,10 @@ export async function createMockModel(): Promise<LanguageModel> {
 
   return new MockLanguageModelV3({
     doStream: async () => ({
+      // 1s before the first chunk so the "thinking" indicator is visible,
+      // then stream the words quickly.
       stream: simulateReadableStream<LanguageModelV3StreamPart>({
-        initialDelayInMs: 120,
+        initialDelayInMs: 1000,
         chunkDelayInMs: 30,
         chunks
       })
