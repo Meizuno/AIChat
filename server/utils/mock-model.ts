@@ -42,6 +42,10 @@ export async function createMockModel(): Promise<LanguageModel> {
   ]
 
   return new MockLanguageModelV3({
+    // Declare every URL as natively supported so streamText does NOT try to
+    // download attachment data: URLs (which it rejects). The mock ignores
+    // message content anyway.
+    supportedUrls: { '*': [/.*/] },
     doStream: async () => ({
       // 1s before the first chunk so the "thinking" indicator is visible,
       // then stream the words quickly.

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { isTextUIPart, isToolUIPart, DefaultChatTransport } from 'ai'
+import { isTextUIPart, isToolUIPart, isFileUIPart, DefaultChatTransport } from 'ai'
+import type { FileUIPart } from 'ai'
 import { Chat } from '@ai-sdk/vue'
 import type { PromptItem } from '#shared/types/prompt'
 import type { AppConfigResponse } from '#shared/types/config'
@@ -126,8 +127,8 @@ const chat = new Chat({
   }
 })
 
-function onSubmit() {
-  chat.sendMessage({ text: input.value })
+function onSubmit(files: FileUIPart[] = []) {
+  chat.sendMessage({ text: input.value, files })
   input.value = ''
   // UChatMessages pins the new user message to the top and reserves space
   // below it (via --last-message-height) until the response fills the screen.
@@ -140,6 +141,13 @@ function getMessageText(message: { parts?: unknown[] }) {
     .map(part => part.text)
     .join('\n\n')
     .trim()
+}
+
+function imageParts(message: { parts?: unknown[] }): FileUIPart[] {
+  if (!message.parts) return []
+  return (message.parts as Parameters<typeof isFileUIPart>[0][])
+    .filter(part => isFileUIPart(part))
+    .filter(part => part.mediaType.startsWith('image/'))
 }
 
 async function copyMessage(message: { id: string, parts?: unknown[] }) {
@@ -405,12 +413,27 @@ const {
           <!-- User text is plain: render it directly so it shows instantly.
                MDC compiles asynchronously, which would briefly blank the
                bubble on submit. Assistant messages keep MDC for Markdown. -->
-          <p
-            v-if="message.role === 'user'"
-            class="whitespace-pre-wrap"
-          >
-            {{ getMessageText(message) }}
-          </p>
+          <template v-if="message.role === 'user'">
+            <div
+              v-if="imageParts(message).length"
+              class="flex flex-wrap gap-2"
+              :class="{ 'mb-2': getMessageText(message) }"
+            >
+              <img
+                v-for="(img, i) in imageParts(message)"
+                :key="i"
+                :src="img.url"
+                :alt="img.filename"
+                class="max-h-60 max-w-full rounded-lg"
+              >
+            </div>
+            <p
+              v-if="getMessageText(message)"
+              class="whitespace-pre-wrap"
+            >
+              {{ getMessageText(message) }}
+            </p>
+          </template>
           <template
             v-for="(part, index) in message.parts"
             v-else
