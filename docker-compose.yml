@@ -4,10 +4,15 @@ services:
     ports:
       - "3000:3000"
     environment:
+      # Required (validated at startup by server/plugins/validate-env).
       NUXT_OPENAI_API_KEY: ${NUXT_OPENAI_API_KEY}
-      NUXT_OAUTH_GOOGLE_CLIENT_ID: ${NUXT_OAUTH_GOOGLE_CLIENT_ID}
-      NUXT_OAUTH_GOOGLE_CLIENT_SECRET: ${NUXT_OAUTH_GOOGLE_CLIENT_SECRET}
-      NUXT_OAUTH_GOOGLE_REDIRECT_URL: ${NUXT_OAUTH_GOOGLE_REDIRECT_URL}
-      NUXT_AUTH_ALLOWED_EMAILS: ${NUXT_AUTH_ALLOWED_EMAILS}
-      NUXT_AUTH_JWT_SECRET: ${NUXT_AUTH_JWT_SECRET}
+      NUXT_AUTH_SERVICE_URL: ${NUXT_AUTH_SERVICE_URL}
+      NUXT_DATABASE_URL: ${NUXT_DATABASE_URL}
+      # Optional: browser-facing auth origin + shared-cookie parent domain.
+      NUXT_AUTH_PUBLIC_URL: ${NUXT_AUTH_PUBLIC_URL:-}
+      NUXT_COOKIE_DOMAIN: ${NUXT_COOKIE_DOMAIN:-}
+    volumes:
+      # Runtime config (MCP servers, model, system prompt) — read at startup
+      # from /app/config.yml; not baked into the image.
+      - ./config.yml:/app/config.yml:ro
     restart: unless-stopped
