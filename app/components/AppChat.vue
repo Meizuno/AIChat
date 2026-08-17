@@ -3,7 +3,7 @@ import { isTextUIPart, isToolUIPart, isFileUIPart, DefaultChatTransport } from '
 import type { FileUIPart, UIMessage } from 'ai'
 import { Chat } from '@ai-sdk/vue'
 import type { PromptItem } from '#shared/types/prompt'
-import type { AppConfigResponse } from '#shared/types/config'
+import { BOT_NAME, PRICING, SUGGESTED_PROMPTS, WELCOME_MESSAGE } from '~/constants'
 
 function normalizeMarkdownForMdc(value: string) {
   const fences = (value.match(/^```/gm) || []).length
@@ -22,14 +22,11 @@ const {
 } = useMcpStatus()
 onMounted(fetchMcpStatus)
 
-const { data: appConfig } = await useFetch<AppConfigResponse>('/api/config', { key: 'app-config' })
+// "Manage MCP servers" modal, opened from the MCP status list in the user popover.
+const mcpModalOpen = ref(false)
 
-const welcomeMessage = computed(() => appConfig.value?.defaults.welcomeMessage ?? '')
-const botName = computed(() => appConfig.value?.defaults.botName ?? '')
-const promptGroups = computed(() => appConfig.value?.promptGroups ?? [])
-const flatPrompts = computed(() =>
-  promptGroups.value.flatMap(g => g.prompts.map(p => ({ ...p, server: g.server })))
-)
+const promptGroups = SUGGESTED_PROMPTS
+const flatPrompts = promptGroups.flatMap(g => g.prompts.map(p => ({ ...p, server: g.server })))
 
 const promptLoading = ref(false)
 
@@ -89,7 +86,7 @@ async function useSuggestedPrompt(item: PromptItem) {
   }
 }
 
-const { usage, accumulate: accumulateUsage, estimatedCost } = useUsage(() => appConfig.value?.pricing)
+const { usage, accumulate: accumulateUsage, estimatedCost } = useUsage(() => PRICING)
 const copiedMessageId = ref<string | null>(null)
 
 async function handleLogout() {
@@ -407,14 +404,24 @@ const {
                   <p class="text-xs font-semibold text-highlighted uppercase tracking-wider">
                     MCP Servers
                   </p>
-                  <UButton
-                    icon="i-lucide-refresh-cw"
-                    variant="ghost"
-                    color="neutral"
-                    size="xs"
-                    :loading="mcpLoading"
-                    @click="fetchMcpStatus"
-                  />
+                  <div class="flex items-center gap-0.5">
+                    <UButton
+                      icon="i-lucide-settings-2"
+                      variant="ghost"
+                      color="neutral"
+                      size="xs"
+                      title="Manage servers"
+                      @click="mcpModalOpen = true"
+                    />
+                    <UButton
+                      icon="i-lucide-refresh-cw"
+                      variant="ghost"
+                      color="neutral"
+                      size="xs"
+                      :loading="mcpLoading"
+                      @click="fetchMcpStatus"
+                    />
+                  </div>
                 </div>
 
                 <div
@@ -543,7 +550,7 @@ const {
 
         <div class="flex-1 pt-4">
           <div
-            v-if="chat.messages.length === 0 && welcomeMessage"
+            v-if="chat.messages.length === 0"
             class="max-w-3xl mx-auto px-4 py-8 sm:py-16 flex flex-col items-center gap-4 sm:gap-6"
           >
             <div class="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-primary/10 flex items-center justify-center">
@@ -554,14 +561,11 @@ const {
               >
             </div>
             <div class="text-center">
-              <p
-                v-if="botName"
-                class="font-semibold text-base"
-              >
-                {{ botName }}
+              <p class="font-semibold text-base">
+                {{ BOT_NAME }}
               </p>
               <p class="text-sm text-muted mt-1">
-                {{ welcomeMessage }}
+                {{ WELCOME_MESSAGE }}
               </p>
             </div>
             <div
@@ -690,6 +694,12 @@ const {
         </div>
       </div>
     </UDashboardPanel>
+
+    <!-- Manage MCP servers; re-probe live tool status after any change. -->
+    <McpServersModal
+      v-model:open="mcpModalOpen"
+      @changed="fetchMcpStatus"
+    />
   </UDashboardGroup>
 </template>
 

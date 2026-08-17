@@ -67,20 +67,28 @@ app/                      ── CLIENT (Vue/Nuxt)
 
 server/                   ── SERVER (Nitro)
 ├── api/                  ── thin HTTP handlers (parse → validate → service → return)
-├── services/             ── SERVER use-cases: chat, mcp, config, prompts
-├── utils/                ── auto-imported helpers (auth, errors, env, mcp-client, mcp-config)
+├── services/             ── SERVER use-cases: chat, mcp, prompts
+├── utils/                ── auto-imported helpers (auth, errors, env, mcp-client,
+│                            mcp-servers data-access, constants)
 ├── middleware/           ── auth gate, request logging
 ├── plugins/              ── startup hooks (env validation)
 └── types/                ── H3EventContext augmentation
 
 shared/                   ── CROSS-CUTTING types + zod schemas (#shared)
-├── schemas/              ── chat body + prompt query schemas
-└── types/                ── auth/config/mcp/prompt wire shapes
+├── schemas/              ── chat body + prompt query + mcp-server schemas
+└── types/                ── auth/mcp/prompt wire shapes
 
-config.yml                ── MCP server list + system prompt + defaults
+app/constants.ts          ── app-level constants (bot name, welcome, suggested prompts)
+server/utils/constants.ts ── server constants (model, system prompt)
 test/                     ── vitest suites; tree mirrors source
 .claude/skills/           ── /git-commit, /git-push, /git-sync, /verify
 ```
+
+**No `config.yml`.** ai-chat is fully DB- + constant-driven: MCP servers are
+per-user in Postgres (model `McpServer`, managed at runtime via the settings
+modal); model / system prompt / bot name / welcome / suggested prompts are
+constants (see the two `constants.ts` above). There are no built-in/shared
+servers — each user registers their own.
 
 Before considering work done:
 

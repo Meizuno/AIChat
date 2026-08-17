@@ -1,4 +1,4 @@
-// Suggested-prompt entries advertised by /api/config. Each prompt is
+// Suggested-prompt entries (defined in app/constants.ts). Each prompt is
 // either a plain `prompt` string the user can send, or a `route` the
 // client should fetch (renders a chart / list / structured block).
 export type PromptItem = {

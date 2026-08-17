@@ -11,8 +11,4 @@ services:
       # Optional: browser-facing auth origin + shared-cookie parent domain.
       NUXT_AUTH_PUBLIC_URL: ${NUXT_AUTH_PUBLIC_URL:-}
       NUXT_COOKIE_DOMAIN: ${NUXT_COOKIE_DOMAIN:-}
-    volumes:
-      # Runtime config (MCP servers, model, system prompt) — read at startup
-      # from /app/config.yml; not baked into the image.
-      - ./config.yml:/app/config.yml:ro
     restart: unless-stopped

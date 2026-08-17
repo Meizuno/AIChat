@@ -15,3 +15,14 @@ export type McpStatus = {
   tools: string[]
   servers: ServerStatus[]
 }
+
+// One of the user's own registered MCP servers, as returned by
+// /api/mcp-servers. Only the connection is stored — tools are fetched live and
+// surfaced through McpStatus, not here.
+export type UserMcpServer = {
+  id: string
+  name: string
+  url: string
+  useAuth: boolean
+  enabled: boolean
+}

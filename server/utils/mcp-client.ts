@@ -1,7 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport, StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import type { H3Event } from 'h3'
-import { getMcpServers } from './mcp-config'
+import type { McpTarget } from './mcp-servers'
 
 // Persistent pool keyed by userId:serverUrl — connections live across
 // requests so each chat turn doesn't re-handshake every server.
@@ -10,21 +10,24 @@ const pool = new Map<string, Client>()
 const poolKey = (userId: string, serverUrl: string) => `${userId}:${serverUrl}`
 
 /**
- * Connect a fresh MCP client to `serverUrl`, authenticating with the
- * user's Bearer access token. This is the single source of truth for
- * how AIChat authenticates to every MCP server — used by both the
- * status probe (throwaway clients) and the chat tool path (pooled), so
- * the two can never diverge on auth again.
+ * Connect a fresh MCP client to `serverUrl`. `accessToken` is sent as a Bearer
+ * when present and omitted otherwise — user sources may carry their own token
+ * or none, and only global sources ever receive the SSO token (the auth is
+ * resolved per-source by resolveSourceAuthToken). This is the single source of
+ * truth for how AIChat connects, shared by the status probe (throwaway clients)
+ * and the chat tool path (pooled), so the two can never diverge.
  */
-export async function connectMcpClient(serverUrl: string, accessToken: string): Promise<Client> {
+export async function connectMcpClient(serverUrl: string, accessToken?: string): Promise<Client> {
+  const headers: Record<string, string> = {}
+  if (accessToken) headers.authorization = `Bearer ${accessToken}`
   const client = new Client({ name: 'ai-chat', version: '1.0.0' })
   await client.connect(new StreamableHTTPClientTransport(new URL(serverUrl), {
-    requestInit: { headers: { authorization: `Bearer ${accessToken}` } }
+    requestInit: { headers }
   }))
   return client
 }
 
-async function getOrCreateClient(userId: string, serverUrl: string, accessToken: string): Promise<Client> {
+async function getOrCreateClient(userId: string, serverUrl: string, accessToken?: string): Promise<Client> {
   const key = poolKey(userId, serverUrl)
   const existing = pool.get(key)
   if (existing) return existing
@@ -58,43 +61,30 @@ export function isMcpAuthError(err: unknown): boolean {
   return (err as { code?: unknown } | null)?.code === 401
 }
 
-function requireAccessToken(event: H3Event): string {
-  const token = event.context.accessToken
-  if (!token) throw new Unauthorized()
-  return token
-}
-
-function resolveServer(serverName?: string) {
-  const servers = getMcpServers()
-  const server = serverName ? servers.find(s => s.name === serverName) : servers[0]
-  if (!server) throw new McpUnavailable(serverName)
-  return server
-}
-
 /**
- * Run an operation against the pooled MCP client for (user, server),
- * authenticating with the request's current Bearer token.
+ * Run an operation against the pooled MCP client for (user, target). The Bearer
+ * is the caller's SSO access token when `target.useAuth` is set, otherwise no
+ * auth header is sent.
  *
- * The pooled Bearer is fixed at connect time and access tokens expire
- * (~15 min), so a pooled connection can carry a stale token and 401
- * mid-turn. On an auth error we drop the pooled client and reconnect
- * once with the request's current token; if that still 401s — the
- * request's own token outlived the turn — we refresh the session and
- * reconnect a final time. Non-auth errors propagate untouched so a
- * failed tool call still surfaces to the model.
+ * The pooled token is fixed at connect time and access tokens expire, so a
+ * pooled connection can 401 mid-turn. On an auth error we drop the pooled client
+ * and reconnect once with the current token. If that still 401s AND this target
+ * uses auth, the request's own session token expired mid-turn — refresh it and
+ * reconnect a final time. A no-auth target that 401s is genuinely unauthorized
+ * (surfaced). Non-auth errors propagate untouched so a failed call reaches the model.
  */
 export async function withMcpClient<T>(
   event: H3Event,
-  serverName: string | undefined,
+  target: McpTarget,
   op: (client: Client) => Promise<T>
 ): Promise<T> {
   const userId = viewerId(event)
   if (!userId) throw new Unauthorized()
-  const server = resolveServer(serverName)
 
+  const token = () => (target.useAuth ? (event.context.accessToken ?? undefined) : undefined)
   const run = async (reconnect: boolean): Promise<T> => {
-    if (reconnect) await dropClient(userId, server.url)
-    return op(await getOrCreateClient(userId, server.url, requireAccessToken(event)))
+    if (reconnect) await dropClient(userId, target.url)
+    return op(await getOrCreateClient(userId, target.url, token()))
   }
 
   try {
@@ -103,15 +93,17 @@ export async function withMcpClient<T>(
     if (!isMcpAuthError(err)) throw err
   }
 
-  // Pooled Bearer was stale — reconnect once with the current token.
+  // Pooled token was stale — reconnect once with the current token.
   try {
     return await run(true)
   } catch (err) {
     if (!isMcpAuthError(err)) throw err
   }
 
-  // Still 401: the request's own token expired mid-turn. Refresh the
-  // session, then reconnect a final time with the fresh token.
-  await tryRefresh(event)
-  return run(true)
+  // Still 401. Only an authed target benefits from a session refresh.
+  if (target.useAuth) {
+    await tryRefresh(event)
+    return run(true)
+  }
+  throw new Unauthorized()
 }

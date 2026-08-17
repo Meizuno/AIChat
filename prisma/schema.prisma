@@ -42,6 +42,28 @@ model Message {
   @@index([chat_id, createdAt]) // load a chat in order
 }
 
+// Per-user MCP servers. Built-in/shared servers live in config.yml; these are
+// the extra ones a user adds at runtime. We store only the connection — the
+// url, a display name, and whether to send the SSO access token as a Bearer
+// (`useAuth`). The tools themselves are NOT stored: they're fetched live from
+// the server (listTools) whenever the app connects. Scoped by user_id — a user
+// only ever sees their own.
+model McpServer {
+  id        String   @id @default(uuid()) @db.Uuid
+  user_id   String
+  name      String   @db.VarChar(120)
+  url       String   @db.VarChar(500)
+  // Send the caller's SSO access token as `Authorization: Bearer` when true;
+  // connect with no auth when false.
+  useAuth   Boolean  @default(false)
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([user_id])
+  @@map("mcp_servers")
+}
+
 // Image (and future file) attachments, stored as bytes in Postgres — no S3.
 // Referenced from a Message part via /api/attachments/{id}; served by an
 // auth-checked Nitro route that verifies the viewer owns it.

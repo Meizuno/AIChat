@@ -1,0 +1,204 @@
+<script setup lang="ts">
+import type { UserMcpServer } from '#shared/types/mcp'
+
+// Manage the user's own MCP servers: add a URL (with an optional name and the
+// "use auth token" checkbox), toggle/enable, and delete. On any change we emit
+// `changed` so the parent re-probes live tool status.
+const open = defineModel<boolean>('open', { default: false })
+const emit = defineEmits<{ changed: [] }>()
+
+const { servers, loading, refresh, add, update, remove } = useMcpServers()
+
+const url = ref('')
+const name = ref('')
+const useAuth = ref(false)
+const submitting = ref(false)
+const formError = ref<string | null>(null)
+
+// Load the list each time the modal opens.
+watch(open, (isOpen) => {
+  if (isOpen) refresh()
+})
+
+function errorMessage(err: unknown, fallback: string): string {
+  return (err as { data?: { message?: string } })?.data?.message ?? fallback
+}
+
+async function submit() {
+  if (!url.value.trim()) {
+    formError.value = 'URL is required'
+    return
+  }
+  submitting.value = true
+  formError.value = null
+  try {
+    await add({ url: url.value.trim(), name: name.value.trim() || undefined, useAuth: useAuth.value })
+    url.value = ''
+    name.value = ''
+    useAuth.value = false
+    emit('changed')
+  } catch (err) {
+    formError.value = errorMessage(err, 'Failed to add server')
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function toggleEnabled(server: UserMcpServer) {
+  await update(server.id, { enabled: !server.enabled })
+  emit('changed')
+}
+
+async function toggleAuth(server: UserMcpServer) {
+  await update(server.id, { useAuth: !server.useAuth })
+  emit('changed')
+}
+
+async function removeServer(id: string) {
+  await remove(id)
+  emit('changed')
+}
+</script>
+
+<template>
+  <UModal
+    v-model:open="open"
+    title="MCP servers"
+    description="Connect your own MCP servers. Tools are fetched live when you connect."
+  >
+    <template #body>
+      <div class="space-y-5">
+        <!-- Add form -->
+        <form
+          class="space-y-3"
+          @submit.prevent="submit"
+        >
+          <UFormField
+            label="Server URL"
+            required
+          >
+            <UInput
+              v-model="url"
+              placeholder="https://example.com/api/mcp"
+              class="w-full"
+              autofocus
+            />
+          </UFormField>
+
+          <UFormField
+            label="Name"
+            hint="optional"
+          >
+            <UInput
+              v-model="name"
+              placeholder="Defaults to the URL host"
+              class="w-full"
+            />
+          </UFormField>
+
+          <div class="flex items-start gap-3 rounded-lg bg-elevated/50 px-3 py-2.5">
+            <USwitch v-model="useAuth" />
+            <div class="text-sm">
+              <p class="font-medium">
+                Use auth token
+              </p>
+              <p class="text-muted text-xs">
+                Send your signed-in access token to this server. Enable only for servers you trust.
+              </p>
+            </div>
+          </div>
+
+          <p
+            v-if="formError"
+            class="text-sm text-error"
+          >
+            {{ formError }}
+          </p>
+
+          <UButton
+            type="submit"
+            label="Add server"
+            icon="i-lucide-plus"
+            :loading="submitting"
+            block
+          />
+        </form>
+
+        <USeparator />
+
+        <!-- User's servers -->
+        <div class="space-y-1.5">
+          <p class="text-xs font-semibold text-highlighted uppercase tracking-wider px-1">
+            Your servers
+          </p>
+
+          <div
+            v-if="servers.length"
+            class="space-y-1.5"
+          >
+            <div
+              v-for="server in servers"
+              :key="server.id"
+              class="flex items-center gap-3 rounded-lg border border-default px-3 py-2.5"
+              :class="{ 'opacity-50': !server.enabled }"
+            >
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-medium truncate">{{ server.name }}</span>
+                  <UBadge
+                    v-if="server.useAuth"
+                    color="primary"
+                    variant="soft"
+                    size="xs"
+                    label="auth"
+                  />
+                </div>
+                <p class="text-xs text-muted truncate">
+                  {{ server.url }}
+                </p>
+              </div>
+
+              <UButton
+                :icon="server.useAuth ? 'i-lucide-shield-check' : 'i-lucide-shield-off'"
+                :color="server.useAuth ? 'primary' : 'neutral'"
+                variant="ghost"
+                size="xs"
+                title="Toggle auth token"
+                @click="toggleAuth(server)"
+              />
+              <UButton
+                :icon="server.enabled ? 'i-lucide-eye' : 'i-lucide-eye-off'"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                title="Enable / disable"
+                @click="toggleEnabled(server)"
+              />
+              <UButton
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="ghost"
+                size="xs"
+                title="Delete"
+                @click="removeServer(server.id)"
+              />
+            </div>
+          </div>
+
+          <p
+            v-else-if="loading"
+            class="text-xs text-muted text-center py-3"
+          >
+            Loading…
+          </p>
+          <p
+            v-else
+            class="text-xs text-muted text-center py-3"
+          >
+            No servers yet. Add one above.
+          </p>
+        </div>
+      </div>
+    </template>
+  </UModal>
+</template>

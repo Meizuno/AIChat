@@ -39,7 +39,7 @@ export async function streamChatResponse(event: H3Event, body: ChatBody) {
   if (useMock) {
     model = await createMockModel()
   } else {
-    const openaiModel = createOpenAI({ apiKey: openaiApiKey })(getConfig().model)
+    const openaiModel = createOpenAI({ apiKey: openaiApiKey })(CHAT_MODEL)
     // The OpenAI provider lists only http(s) image URLs as supported, so the
     // AI SDK tries to HTTP-download data: URL image attachments and throws.
     // The OpenAI API accepts data URLs inline, so mark them supported to skip
@@ -49,7 +49,7 @@ export async function streamChatResponse(event: H3Event, body: ChatBody) {
   }
   const tools = useMock ? undefined : await getChatTools(event)
 
-  const systemPrompt = getConfig().systemPrompt.replace('{date}', new Date().toISOString().slice(0, 10))
+  const systemPrompt = SYSTEM_PROMPT.replace('{date}', new Date().toISOString().slice(0, 10))
 
   // Rehydrate any stored `/api/attachments/{id}` image parts back to data URLs
   // (no-op for fresh turns, which already carry data URLs) so the model gets

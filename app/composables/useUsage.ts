@@ -5,11 +5,11 @@ type Usage = { inputTokens: number, outputTokens: number, totalTokens: number }
 // Token-usage accumulator + cost readout. The AI SDK emits a
 // `data-usage` chunk at the end of each completion; the chat
 // component forwards it here via `accumulate`. Costs are computed
-// off the running totals using whatever the /api/config pricing
-// block reports, with sensible fallbacks when none is configured.
+// off the running totals using the app's PRICING constant, with
+// sensible fallbacks when none is configured.
 //
-// Pricing is read via a getter (not a plain value) so the composable
-// stays reactive to the appConfig that arrives via useFetch.
+// Pricing is read via a getter (not a plain value) to keep the call
+// site flexible (e.g. a future reactive/per-model source).
 export function useUsage(pricing: () => Pricing | undefined) {
   const usage = ref<Usage | null>(null)
 
