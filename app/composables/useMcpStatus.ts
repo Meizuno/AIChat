@@ -20,10 +20,16 @@ export function mcpStatusColor(status: McpStatus | null): string {
 // reload button so the user can probe a flapping server without a
 // full page refresh.
 //
+// A module singleton so the sidebar (layout) and the servers page share one
+// snapshot — adding a server on /servers re-probes the same status the sidebar
+// dots read.
+//
 // Failures are soft: a thrown $fetch yields the empty-servers shape
 // so the UI doesn't have to special-case `null` for "fetched but
 // failed".
-export function useMcpStatus() {
+let store: ReturnType<typeof createStore> | null = null
+
+function createStore() {
   const status = ref<McpStatus | null>(null)
   const loading = ref(false)
 
@@ -42,4 +48,9 @@ export function useMcpStatus() {
   }
 
   return { status, loading, color, refresh }
+}
+
+export function useMcpStatus() {
+  if (!store) store = createStore()
+  return store
 }

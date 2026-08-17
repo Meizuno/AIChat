@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// Standalone auth page — no dashboard shell.
+definePageMeta({ layout: false })
+
 const { loggedIn } = useAuth()
 const route = useRoute()
 const router = useRouter()

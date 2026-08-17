@@ -1,3 +1,3 @@
 <template>
-  <AppChat />
+  <ChatWorkspace />
 </template>
