@@ -11,14 +11,60 @@ import type { LanguageModelV3StreamPart } from '@ai-sdk/provider'
 export async function createMockModel(): Promise<LanguageModel> {
   const { MockLanguageModelV3, simulateReadableStream } = await import('ai/test')
 
+  // A full markdown + LaTeX showcase so every Prose component and the KaTeX math
+  // rendering can be verified in dev. LaTeX backslashes are doubled (JS string
+  // escapes); the table avoids `$` so remark-math doesn't misparse it.
   const reply = [
-    '**Mock AI — dev mode.** This reply is generated locally by a mock model,',
-    'so no OpenAI request was made and no tokens were spent.',
+    '# Markdown & LaTeX showcase',
     '',
-    'Streaming, Markdown rendering, and the token-usage readout all run through',
-    'the real code paths — only the model is swapped. Set `NUXT_MOCK_AI=` (empty)',
-    'to talk to OpenAI again.'
-  ].join(' ')
+    'A **mock reply** in _dev mode_ — no OpenAI call, no tokens. It exercises every',
+    'Prose component and the math rendering: an [inline link](https://nuxt.com) and',
+    'some `inline code`.',
+    '',
+    '## Heading level 2',
+    '',
+    '### Heading level 3',
+    '',
+    '> A blockquote to test ProseBlockquote — with a nested `code` span.',
+    '',
+    '- Unordered item **one**',
+    '- Unordered item two',
+    '  - nested a',
+    '  - nested b',
+    '',
+    '1. Ordered first',
+    '2. Ordered second',
+    '3. Ordered third',
+    '',
+    '![Meizuno logo](/favicon.svg)',
+    '',
+    '---',
+    '',
+    '```ts',
+    'export function greet(name: string): string {',
+    '  return "Hello, " + name + "!"',
+    '}',
+    '```',
+    '',
+    '| Model | Input /1M | Output /1M |',
+    '| --- | --- | --- |',
+    '| luna | 0.20 | 1.20 |',
+    '| terra | 2.00 | 12.00 |',
+    '',
+    'Inline math with dollars: $E = mc^2$, and with parens: \\(a^2 + b^2 = c^2\\).',
+    '',
+    'Display math (dollars):',
+    '',
+    '$$',
+    '\\int_0^\\infty e^{-x} \\, dx = 1',
+    '$$',
+    '',
+    'Display math (brackets) — Navier–Stokes:',
+    '',
+    '\\[',
+    '\\frac{\\partial \\mathbf{u}}{\\partial t} + (\\mathbf{u}\\cdot \\nabla)\\mathbf{u} = -\\frac{1}{\\rho}\\nabla p + \\nu \\nabla^2 \\mathbf{u} + \\mathbf{f}',
+    '\\]'
+  ].join('\n')
 
   // A short reasoning sample so the reasoning panel (UChatReasoning) can be
   // exercised in dev without a reasoning-capable model or API key.
