@@ -18,3 +18,10 @@
 
   --breakpoint-xs: 30rem;
 }
+
+/* Compact dashboard header — shrinks the sidebar header + panel navbars
+   together (Nuxt UI default is 4rem). Unlayered so it wins over @nuxt/ui's
+   @layer theme definition. */
+:root {
+  --ui-header-height: 2.75rem;
+}

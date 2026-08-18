@@ -2,17 +2,17 @@
 // Profile section of the Settings page: a public profile URL (e.g. an llms.txt)
 // the assistant fetches so it knows who it works for. Prepended to the system
 // prompt server-side.
-const { profileUrl, saving, load, save } = useSettings()
+const { profileUrl, savingProfile, ensureLoaded, saveProfile } = useSettings()
 
 const saved = ref(false)
 const error = ref<string | null>(null)
 
-onMounted(load)
+onMounted(ensureLoaded)
 
 async function onSubmit() {
   error.value = null
   try {
-    await save()
+    await saveProfile()
     saved.value = true
     setTimeout(() => {
       saved.value = false
@@ -63,7 +63,7 @@ async function onSubmit() {
           type="submit"
           label="Save"
           icon="i-lucide-check"
-          :loading="saving"
+          :loading="savingProfile"
         />
         <span
           v-if="saved"

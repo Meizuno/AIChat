@@ -71,6 +71,9 @@ model McpServer {
 model Setting {
   user_id    String   @id
   profileUrl String?  @db.VarChar(500)
+  // User-defined starter prompts shown on the welcome screen + prompt picker:
+  // [{ label, prompt }]. Validated at the API boundary (zod).
+  suggestedPrompts Json?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

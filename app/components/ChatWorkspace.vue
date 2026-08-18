@@ -2,7 +2,7 @@
 import { isTextUIPart, isToolUIPart, isFileUIPart } from 'ai'
 import type { FileUIPart } from 'ai'
 import type { PromptItem } from '#shared/types/prompt'
-import { BOT_NAME, SUGGESTED_PROMPTS, WELCOME_MESSAGE } from '~/constants'
+import { BOT_NAME, WELCOME_MESSAGE } from '~/constants'
 
 // The chat panel: navbar (current chat title + rename/delete), the message
 // stream (or welcome screen), and the prompt bar. Conversation state is shared
@@ -30,8 +30,15 @@ function normalizeMarkdownForMdc(value: string) {
   return value
 }
 
-const promptGroups = SUGGESTED_PROMPTS
-const flatPrompts = promptGroups.flatMap(g => g.prompts.map(p => ({ ...p, server: g.server })))
+// Per-user starter prompts (managed in Settings). Shown as welcome-screen chips
+// and, grouped, in the prompt picker.
+const { suggestedPrompts, ensureLoaded } = useSettings()
+onMounted(ensureLoaded)
+
+const flatPrompts = computed(() => suggestedPrompts.value)
+const promptGroups = computed(() =>
+  suggestedPrompts.value.length ? [{ server: 'Suggestions', prompts: suggestedPrompts.value }] : []
+)
 
 const promptLoading = ref(false)
 const copiedMessageId = ref<string | null>(null)
@@ -152,7 +159,7 @@ const {
 <template>
   <UDashboardPanel>
     <!-- Page header: current chat name + rename/delete (+ sidebar toggle on mobile) -->
-    <UDashboardNavbar>
+    <UDashboardNavbar :ui="{ title: 'text-sm' }">
       <template #title>
         <UInput
           v-if="editingId === activeChatId"
@@ -232,14 +239,14 @@ const {
             class="flex flex-wrap justify-center gap-2 max-w-2xl"
           >
             <button
-              v-for="item in flatPrompts"
-              :key="`${item.server}:${item.label}`"
+              v-for="(item, i) in flatPrompts"
+              :key="`${i}:${item.label}`"
               class="group flex items-center gap-2 rounded-xl border border-default bg-default/50 p-1 pr-3 text-left hover:bg-elevated hover:border-primary/50 transition-all cursor-pointer"
               @click="useSuggestedPrompt(item)"
             >
               <div class="size-6 shrink-0 rounded-lg bg-primary/10 flex items-center justify-center">
                 <UIcon
-                  :name="item.route ? 'i-lucide-zap' : 'i-lucide-message-circle'"
+                  name="i-lucide-message-circle"
                   class="size-4 text-primary"
                 />
               </div>

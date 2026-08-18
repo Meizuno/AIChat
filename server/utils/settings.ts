@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client'
 import type { UpdateSettingsInput } from '#shared/schemas/settings'
 
 // Scoped data-access for per-user settings (one row per user, keyed by user_id).
@@ -11,9 +12,12 @@ export function getUserSettings(userId: string) {
 /** Upsert the user's settings. Only fields present in `patch` are changed;
  *  an empty-string profileUrl clears it (stored as null). */
 export function saveUserSettings(userId: string, patch: UpdateSettingsInput) {
-  const data: { profileUrl?: string | null } = {}
+  const data: { profileUrl?: string | null, suggestedPrompts?: Prisma.InputJsonValue } = {}
   if (patch.profileUrl !== undefined) {
     data.profileUrl = patch.profileUrl === '' ? null : patch.profileUrl
+  }
+  if (patch.suggestedPrompts !== undefined) {
+    data.suggestedPrompts = patch.suggestedPrompts
   }
   return getPrisma().setting.upsert({
     where: { user_id: userId },
