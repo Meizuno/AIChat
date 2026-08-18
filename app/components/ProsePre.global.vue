@@ -7,12 +7,10 @@ import ProseNoteDetail from './content/ProseNoteDetail.global.vue'
 
 defineOptions({ inheritAttrs: false })
 
-// The template reads template props (code, language, filename) by
-// name from the auto-import scope, plus $props.class for the
-// pre-tag passthrough. We don't reference `defineProps`' return
-// value in the script — the underscore prefix tells the linter the
-// declaration is for template/$props consumption only.
-const _props = defineProps({
+// The template also reads props (code, language, filename) by name from the
+// auto-import scope, plus $props.class for the pre-tag passthrough; `props`
+// is used here for the copy button.
+const props = defineProps({
   code: { type: String, default: '' },
   language: { type: String, default: null },
   filename: { type: String, default: null },
@@ -20,7 +18,15 @@ const _props = defineProps({
   meta: { type: String, default: null },
   class: { type: String, default: null }
 })
-void _props
+
+const copied = ref(false)
+async function copyCode() {
+  await navigator.clipboard.writeText(props.code)
+  copied.value = true
+  setTimeout(() => {
+    copied.value = false
+  }, 1500)
+}
 </script>
 
 <template>
@@ -52,8 +58,17 @@ void _props
        with the syntax tokens. -->
   <div
     v-else
-    class="group my-4 overflow-hidden rounded-xl border border-slate-200/70 bg-slate-50 shadow-sm dark:border-slate-700/60 dark:bg-slate-950"
+    class="group relative my-4 overflow-hidden rounded-xl border border-slate-200/70 bg-slate-50 shadow-sm dark:border-slate-700/60 dark:bg-slate-950"
   >
+    <UButton
+      :icon="copied ? 'i-lucide-check' : 'i-lucide-copy'"
+      :color="copied ? 'success' : 'neutral'"
+      variant="ghost"
+      size="xs"
+      class="absolute right-2 top-2 z-10"
+      :aria-label="copied ? 'Copied' : 'Copy code'"
+      @click="copyCode"
+    />
     <div
       v-if="filename || language"
       class="flex items-center justify-between border-b border-slate-200/70 bg-slate-100 px-4 py-2 dark:border-slate-700/60 dark:bg-slate-900"

@@ -154,6 +154,12 @@ function canShowCopy(message: { id: string, role: string, parts?: unknown[] }) {
   return !!getMessageText(message)
 }
 
+// Re-run the assistant response for a message (drops it and regenerates from
+// the preceding user turn).
+function regenerateMessage(message: { id: string }) {
+  chat.value.regenerate({ messageId: message.id })
+}
+
 // Pull down past the threshold = clear the chat (full-page reload).
 // Disabled while a stream is in flight so a long completion can't
 // be interrupted by an accidental pull.
@@ -343,6 +349,15 @@ const {
                 size="xs"
                 :aria-label="copiedMessageId === message.id ? 'Copied' : 'Copy message'"
                 @click="copyMessage(message)"
+              />
+              <UButton
+                v-if="canShowCopy(message)"
+                icon="i-lucide-refresh-cw"
+                variant="ghost"
+                color="neutral"
+                size="xs"
+                aria-label="Regenerate response"
+                @click="regenerateMessage(message)"
               />
             </div>
           </template>
