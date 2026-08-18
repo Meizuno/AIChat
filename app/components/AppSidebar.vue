@@ -15,7 +15,8 @@ const {
   editingTitle,
   submitRename,
   onRenameBlur,
-  chatMenu
+  chatMenu,
+  refreshChats
 } = useConversations()
 
 const {
@@ -25,7 +26,10 @@ const {
   refresh: fetchMcpStatus
 } = useMcpStatus()
 
+// Load the chat history + MCP status when the app opens (the sidebar is in the
+// layout, so this runs once per session).
 onMounted(() => {
+  refreshChats()
   fetchMcpStatus()
 })
 
