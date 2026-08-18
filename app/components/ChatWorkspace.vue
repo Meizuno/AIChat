@@ -25,9 +25,19 @@ const {
 } = useConversations()
 
 function normalizeMarkdownForMdc(value: string) {
-  const fences = (value.match(/^```/gm) || []).length
-  if (fences % 2 !== 0) return value + '\n```'
-  return value
+  // Models emit TeX display/inline math as \[ … \] / \( … \); remark-math only
+  // understands $$ … $$ / $ … $, so convert them. Skip anything inside fenced
+  // code so literal LaTeX in code blocks is left untouched.
+  const withMath = value.replace(/(```[\s\S]*?```|`[^`]*`)|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)/g,
+    (match, code, display, inline) => {
+      if (code !== undefined) return code
+      if (display !== undefined) return `\n$$\n${display.trim()}\n$$\n`
+      return `$${inline!.trim()}$`
+    })
+
+  const fences = (withMath.match(/^```/gm) || []).length
+  if (fences % 2 !== 0) return withMath + '\n```'
+  return withMath
 }
 
 // Per-user starter prompts (managed in Settings). Shown as welcome-screen chips

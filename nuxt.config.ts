@@ -26,9 +26,18 @@ export default defineNuxtConfig({
     }
   },
 
-  css: ['~/assets/css/main.css'],
+  css: ['~/assets/css/main.css', 'katex/dist/katex.min.css'],
 
   mdc: {
+    // Math: remark-math parses $…$ / $$…$$ (and \(…\) / \[…\] once normalized
+    // client-side, see ChatWorkspace), rehype-katex renders it with KaTeX
+    // (CSS loaded above).
+    remarkPlugins: {
+      'remark-math': {}
+    },
+    rehypePlugins: {
+      'rehype-katex': {}
+    },
     highlight: {
       theme: {
         dark: 'github-dark',
