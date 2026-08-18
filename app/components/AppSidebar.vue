@@ -8,6 +8,7 @@ const { user, logout } = useAuth()
 const {
   sidebarOpen,
   chats,
+  chatsLoaded,
   activeChatId,
   newChat,
   openChat,
@@ -34,6 +35,17 @@ onMounted(() => {
 })
 
 const userMenuOpen = ref(false)
+
+// Light / dark toggle for the dropdown. Bound directly to color mode (a single
+// control, unlike UColorModeSwitch which renders a ClientOnly fallback that can
+// double up inside the teleported popover).
+const colorMode = useColorMode()
+const isDark = computed({
+  get: () => colorMode.value === 'dark',
+  set: (dark: boolean) => {
+    colorMode.preference = dark ? 'dark' : 'light'
+  }
+})
 
 // One-line MCP summary for the dropdown; the full per-server list is on Settings.
 const mcpSummary = computed(() => {
@@ -71,11 +83,12 @@ async function handleLogout() {
   <UDashboardSidebar
     v-model:open="sidebarOpen"
     toggle-side="right"
+    :ui="{ header: 'border-b border-default' }"
   >
     <template #header>
       <NuxtLink
         to="/"
-        class="flex items-center gap-2"
+        class="flex items-center gap-2 px-2 py-3"
       >
         <img
           src="/favicon.svg"
@@ -147,8 +160,19 @@ async function handleLogout() {
           </div>
         </div>
       </div>
+      <!-- Skeletons while the first fetch is in flight -->
+      <div
+        v-if="!chatsLoaded"
+        class="space-y-1"
+      >
+        <USkeleton
+          v-for="i in 6"
+          :key="i"
+          class="h-8 rounded-lg"
+        />
+      </div>
       <p
-        v-if="!chats.length"
+        v-else-if="!chats.length"
         class="text-xs text-muted text-center py-4"
       >
         No chats yet
@@ -217,6 +241,20 @@ async function handleLogout() {
                 :style="{ backgroundColor: mcpColor }"
               />
               <span class="flex-1 text-sm text-muted truncate">{{ mcpSummary }}</span>
+            </div>
+
+            <USeparator />
+
+            <!-- Theme toggle (light / dark) -->
+            <div class="flex items-center justify-between gap-2 px-2 py-1">
+              <span class="text-sm">Theme</span>
+              <ClientOnly>
+                <USwitch
+                  v-model="isDark"
+                  checked-icon="i-lucide-moon"
+                  unchecked-icon="i-lucide-sun"
+                />
+              </ClientOnly>
             </div>
 
             <USeparator />

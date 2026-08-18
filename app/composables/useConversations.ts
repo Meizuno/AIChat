@@ -51,8 +51,13 @@ function createStore() {
 
   // Chat history list for the sidebar.
   const chats = ref<ChatListItem[]>([])
+  const chatsLoaded = ref(false)
   async function refreshChats() {
-    chats.value = await $fetch<ChatListItem[]>('/api/chats')
+    try {
+      chats.value = await $fetch<ChatListItem[]>('/api/chats')
+    } finally {
+      chatsLoaded.value = true
+    }
   }
 
   function newChat() {
@@ -141,6 +146,7 @@ function createStore() {
     chat,
     sidebarOpen,
     chats,
+    chatsLoaded,
     refreshChats,
     newChat,
     openChat,
