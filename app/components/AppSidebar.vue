@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // The dashboard sidebar: app logo, new-chat + chat history, and the user
-// popover (MCP status, manage-servers link, logout). Shared across pages via
-// the default layout. All conversation state comes from useConversations so the
-// list + active chat stay in sync with the chat workspace.
+// popover (a short MCP status summary, Settings, logout). The detailed per-server
+// status lives on the Settings page. Shared across pages via the default layout;
+// conversation state comes from useConversations so the list + active chat stay
+// in sync with the chat workspace.
 const { user, logout } = useAuth()
 const {
   sidebarOpen,
@@ -29,6 +30,16 @@ onMounted(() => {
 })
 
 const userMenuOpen = ref(false)
+
+// One-line MCP summary for the dropdown; the full per-server list is on Settings.
+const mcpSummary = computed(() => {
+  const s = mcpStatus.value
+  if (!s) return 'Checking servers…'
+  const total = s.servers.length
+  if (total === 0) return 'No MCP servers'
+  const online = s.servers.filter(x => x.connected).length
+  return `${online}/${total} server${total === 1 ? '' : 's'} online`
+})
 
 function newChatAndGo() {
   newChat()
@@ -161,7 +172,7 @@ async function handleLogout() {
         </UButton>
 
         <template #content>
-          <div class="w-72 p-2 space-y-2">
+          <div class="w-[var(--reka-popper-anchor-width)] p-2 space-y-2">
             <!-- User header -->
             <div class="flex items-center gap-2 px-1 py-1">
               <UAvatar
@@ -184,82 +195,28 @@ async function handleLogout() {
 
             <USeparator />
 
-            <!-- MCP servers status -->
-            <div>
-              <div class="flex items-center justify-between px-1 mb-1">
-                <p class="text-xs font-semibold text-highlighted uppercase tracking-wider">
-                  MCP Servers
-                </p>
-                <div class="flex items-center gap-0.5">
-                  <UButton
-                    icon="i-lucide-settings-2"
-                    variant="ghost"
-                    color="neutral"
-                    size="xs"
-                    title="Settings"
-                    @click="openSettings"
-                  />
-                  <UButton
-                    icon="i-lucide-refresh-cw"
-                    variant="ghost"
-                    color="neutral"
-                    size="xs"
-                    :loading="mcpLoading"
-                    @click="fetchMcpStatus"
-                  />
-                </div>
-              </div>
-
-              <div
-                v-if="mcpStatus?.servers?.length"
-                class="space-y-0.5"
-              >
-                <div
-                  v-for="server in mcpStatus.servers"
-                  :key="server.name"
-                  class="flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-elevated transition-colors"
-                >
-                  <span
-                    class="w-2 h-2 rounded-full shrink-0"
-                    :class="server.connected ? 'bg-green-500' : 'bg-red-500'"
-                  />
-                  <span class="flex-1 text-sm font-medium truncate">{{ server.name }}</span>
-                  <span
-                    v-if="server.connected"
-                    class="text-xs text-muted shrink-0"
-                  >{{ server.toolCount }} tool{{ server.toolCount === 1 ? '' : 's' }}</span>
-                  <span
-                    v-else
-                    class="text-xs text-red-500 shrink-0"
-                  >unreachable</span>
-                </div>
-              </div>
-
-              <div
-                v-else-if="mcpStatus === null"
-                class="space-y-1"
-              >
-                <div
-                  v-for="i in 2"
-                  :key="i"
-                  class="flex items-center gap-2.5 px-2 py-2"
-                >
-                  <USkeleton class="w-2 h-2 rounded-full shrink-0" />
-                  <USkeleton class="h-3 flex-1 rounded" />
-                  <USkeleton class="h-3 w-12 rounded" />
-                </div>
-              </div>
-
-              <p
-                v-else
-                class="text-xs text-muted text-center py-2"
-              >
-                No servers configured
-              </p>
+            <!-- Short MCP status; full per-server list is on the Settings page -->
+            <div class="flex items-center gap-2 px-2 py-1.5">
+              <span
+                class="size-2 rounded-full shrink-0"
+                :class="{ 'animate-pulse': mcpStatus === null || mcpLoading }"
+                :style="{ backgroundColor: mcpColor }"
+              />
+              <span class="flex-1 text-sm text-muted truncate">{{ mcpSummary }}</span>
             </div>
 
             <USeparator />
 
+            <UButton
+              icon="i-lucide-settings-2"
+              label="Settings"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              block
+              class="justify-start"
+              @click="openSettings"
+            />
             <UButton
               icon="i-lucide-log-out"
               label="Log out"

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // Settings page (default layout → sidebar + this panel). Sections: the profile
-// URL the assistant reads, and the user's MCP servers. Re-probes the shared MCP
-// status on any server change so the sidebar health dots stay current.
-const { refresh: fetchMcpStatus } = useMcpStatus()
+// URL the assistant reads, and the user's MCP servers with live status. The
+// panels own their own data + status refresh (via shared composables), so the
+// sidebar health dot stays in sync too.
 </script>
 
 <template>
@@ -27,7 +27,7 @@ const { refresh: fetchMcpStatus } = useMcpStatus()
       <div class="max-w-2xl mx-auto px-4 py-8 space-y-10">
         <SettingsProfile />
         <USeparator />
-        <McpServersPanel @changed="fetchMcpStatus" />
+        <McpServersPanel />
       </div>
     </div>
   </UDashboardPanel>

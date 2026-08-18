@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import type { UserMcpServer } from '#shared/types/mcp'
+import type { ServerStatus, UserMcpServer } from '#shared/types/mcp'
 
-// MCP servers section of the Settings page (not a modal). Add a URL (with an
-// optional name and the "use auth token" checkbox), toggle/enable, and delete.
-// On any change we emit `changed` so the parent re-probes live tool status.
-const emit = defineEmits<{ changed: [] }>()
-
+// MCP servers section of the Settings page: add a URL (with an optional name and
+// the "use auth token" checkbox), see each server's live connection status
+// (fetched via the shared useMcpStatus probe), toggle/enable, and delete.
 const { servers, loading, refresh, add, update, remove } = useMcpServers()
+const { status: mcpStatus, loading: statusLoading, refresh: refreshStatus } = useMcpStatus()
 
 const url = ref('')
 const name = ref('')
@@ -14,12 +13,24 @@ const useAuth = ref(false)
 const submitting = ref(false)
 const formError = ref<string | null>(null)
 
-onMounted(refresh)
+onMounted(() => {
+  refresh()
+  refreshStatus()
+})
+
+// Live probe status keyed by server name, for the per-row indicator.
+const statusByName = computed(() => {
+  const map: Record<string, ServerStatus> = {}
+  for (const s of mcpStatus.value?.servers ?? []) map[s.name] = s
+  return map
+})
 
 function errorMessage(err: unknown, fallback: string): string {
   return (err as { data?: { message?: string } })?.data?.message ?? fallback
 }
 
+// Re-probe after any change so the row status (and the sidebar health dot,
+// which reads the same shared status) stays current.
 async function submit() {
   if (!url.value.trim()) {
     formError.value = 'URL is required'
@@ -32,7 +43,7 @@ async function submit() {
     url.value = ''
     name.value = ''
     useAuth.value = false
-    emit('changed')
+    refreshStatus()
   } catch (err) {
     formError.value = errorMessage(err, 'Failed to add server')
   } finally {
@@ -42,17 +53,17 @@ async function submit() {
 
 async function toggleEnabled(server: UserMcpServer) {
   await update(server.id, { enabled: !server.enabled })
-  emit('changed')
+  refreshStatus()
 }
 
 async function toggleAuth(server: UserMcpServer) {
   await update(server.id, { useAuth: !server.useAuth })
-  emit('changed')
+  refreshStatus()
 }
 
 async function removeServer(id: string) {
   await remove(id)
-  emit('changed')
+  refreshStatus()
 }
 </script>
 
@@ -123,11 +134,22 @@ async function removeServer(id: string) {
 
     <USeparator />
 
-    <!-- User's servers -->
+    <!-- User's servers with live status -->
     <div class="space-y-2">
-      <p class="text-xs font-semibold text-highlighted uppercase tracking-wider">
-        Your servers
-      </p>
+      <div class="flex items-center justify-between">
+        <p class="text-xs font-semibold text-highlighted uppercase tracking-wider">
+          Your servers
+        </p>
+        <UButton
+          icon="i-lucide-refresh-cw"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          title="Refresh status"
+          :loading="statusLoading"
+          @click="refreshStatus"
+        />
+      </div>
 
       <div
         v-if="servers.length"
@@ -154,6 +176,12 @@ async function removeServer(id: string) {
               {{ server.url }}
             </p>
           </div>
+
+          <!-- Live status (enabled servers only; disabled ones aren't probed) -->
+          <McpServerStatus
+            v-if="server.enabled"
+            :status="statusByName[server.name]"
+          />
 
           <UButton
             :icon="server.useAuth ? 'i-lucide-shield-check' : 'i-lucide-shield-off'"
