@@ -1,9 +1,5 @@
 <script setup lang="ts">
 import ProseChart from './content/ProseChart.global.vue'
-import ProseRecipes from './content/ProseRecipes.global.vue'
-import ProseRecipeDetail from './content/ProseRecipeDetail.global.vue'
-import ProseNotes from './content/ProseNotes.global.vue'
-import ProseNoteDetail from './content/ProseNoteDetail.global.vue'
 
 defineOptions({ inheritAttrs: false })
 
@@ -32,22 +28,6 @@ async function copyCode() {
 <template>
   <ProseChart
     v-if="language === 'chart'"
-    :code="code"
-  />
-  <ProseRecipes
-    v-else-if="language === 'recipes'"
-    :code="code"
-  />
-  <ProseRecipeDetail
-    v-else-if="language === 'recipe-detail'"
-    :code="code"
-  />
-  <ProseNotes
-    v-else-if="language === 'notes'"
-    :code="code"
-  />
-  <ProseNoteDetail
-    v-else-if="language === 'note-detail'"
     :code="code"
   />
   <!-- Code-block surface is theme-aware: a Snow-Storm-ish slate-50
