@@ -20,14 +20,26 @@ export async function createMockModel(): Promise<LanguageModel> {
     'to talk to OpenAI again.'
   ].join(' ')
 
+  // A short reasoning sample so the reasoning panel (UChatReasoning) can be
+  // exercised in dev without a reasoning-capable model or API key.
+  const reasoning = [
+    'The user is running in mock mode, so I have no real model to think with.',
+    'I will stream this sample reasoning to exercise the reasoning panel, then',
+    'return the canned answer below.'
+  ].join(' ')
+
   // Split on whitespace but keep the separators, so the stream reassembles to
   // the exact text (spaces and newlines included).
   const words = reply.split(/(\s+)/).filter(Boolean)
+  const reasoningWords = reasoning.split(/(\s+)/).filter(Boolean)
 
   // Typed as the provider stream-part union: ReadableStream<T> is invariant in
   // T, so the chunks must match LanguageModelV3StreamPart exactly. Usage uses
   // the v6 nested shape; streamText derives the flat data-usage from it.
   const chunks: LanguageModelV3StreamPart[] = [
+    { type: 'reasoning-start', id: 'r0' },
+    ...reasoningWords.map(word => ({ type: 'reasoning-delta' as const, id: 'r0', delta: word })),
+    { type: 'reasoning-end', id: 'r0' },
     { type: 'text-start', id: '0' },
     ...words.map(word => ({ type: 'text-delta' as const, id: '0', delta: word })),
     { type: 'text-end', id: '0' },
@@ -36,7 +48,7 @@ export async function createMockModel(): Promise<LanguageModel> {
       finishReason: { unified: 'stop', raw: undefined },
       usage: {
         inputTokens: { total: 12, noCache: 12, cacheRead: 0, cacheWrite: 0 },
-        outputTokens: { total: words.length, text: words.length, reasoning: 0 }
+        outputTokens: { total: words.length + reasoningWords.length, text: words.length, reasoning: reasoningWords.length }
       }
     }
   ]
