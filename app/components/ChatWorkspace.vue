@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { isTextUIPart, isToolUIPart, isFileUIPart } from 'ai'
+import { isTextUIPart, isToolUIPart, isFileUIPart, isReasoningUIPart } from 'ai'
 import type { FileUIPart } from 'ai'
 import type { PromptItem } from '#shared/types/prompt'
 import { BOT_NAME, WELCOME_MESSAGE } from '~/constants'
@@ -310,8 +310,16 @@ const {
               v-else
               :key="`${message.id}-${part.type}-${index}`"
             >
+              <!-- Live reasoning: a collapsible that streams the model's
+                   thinking and auto-collapses when it's done. -->
+              <UChatReasoning
+                v-if="isReasoningUIPart(part)"
+                :text="part.text"
+                :streaming="part.state === 'streaming'"
+                class="mb-3"
+              />
               <MDC
-                v-if="isTextUIPart(part)"
+                v-else-if="isTextUIPart(part)"
                 :value="normalizeMarkdownForMdc(part.text)"
                 :cache-key="`${message.id}-${index}-${Math.floor(part.text.length / 80)}`"
                 class="*:first:mt-0 *:last:mb-0"

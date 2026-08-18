@@ -68,14 +68,20 @@ export async function streamChatResponse(event: H3Event, body: ChatBody) {
     system: systemPrompt,
     messages: await convertToModelMessages(modelMessages as Parameters<typeof convertToModelMessages>[0]),
     tools,
-    stopWhen: stepCountIs(5)
+    stopWhen: stepCountIs(5),
+    // Ask OpenAI reasoning models to stream a summary of their reasoning so the
+    // UI can show it live. Namespaced by provider → a no-op for the mock model;
+    // only reasoning-capable models actually emit it.
+    providerOptions: { openai: { reasoningSummary: 'auto' } }
   })
 
   return createUIMessageStreamResponse({
     stream: createUIMessageStream({
       originalMessages,
       async execute({ writer }) {
-        writer.merge(result.toUIMessageStream())
+        // sendReasoning forwards reasoning parts to the client (the reasoning
+        // panel); they are not persisted (onFinish stores text/tool parts).
+        writer.merge(result.toUIMessageStream({ sendReasoning: true }))
         const usage = await result.usage
         writer.write({ type: 'data-usage', data: usage } as never)
       },
