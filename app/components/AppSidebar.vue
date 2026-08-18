@@ -40,10 +40,10 @@ async function selectChat(id: string) {
   navigateTo('/')
 }
 
-function openServers() {
+function openSettings() {
   userMenuOpen.value = false
   sidebarOpen.value = false
-  navigateTo('/servers')
+  navigateTo('/settings')
 }
 
 async function handleLogout() {
@@ -196,8 +196,8 @@ async function handleLogout() {
                     variant="ghost"
                     color="neutral"
                     size="xs"
-                    title="Manage servers"
-                    @click="openServers"
+                    title="Settings"
+                    @click="openSettings"
                   />
                   <UButton
                     icon="i-lucide-refresh-cw"

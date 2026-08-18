@@ -49,7 +49,14 @@ export async function streamChatResponse(event: H3Event, body: ChatBody) {
   }
   const tools = useMock ? undefined : await getChatTools(event)
 
-  const systemPrompt = SYSTEM_PROMPT.replace('{date}', new Date().toISOString().slice(0, 10))
+  // Prepend the user's configured profile (a public llms.txt-style page set in
+  // their settings) so the assistant knows who it works for. No-op if unset or
+  // it can't be fetched.
+  const basePrompt = SYSTEM_PROMPT.replace('{date}', new Date().toISOString().slice(0, 10))
+  const profile = await getUserProfile(userId)
+  const systemPrompt = profile
+    ? `${basePrompt}\n\n# About the user you assist\n${profile}`
+    : basePrompt
 
   // Rehydrate any stored `/api/attachments/{id}` image parts back to data URLs
   // (no-op for fresh turns, which already carry data URLs) so the model gets

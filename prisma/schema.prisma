@@ -64,6 +64,19 @@ model McpServer {
   @@map("mcp_servers")
 }
 
+// Per-user settings (one row per user, keyed by user_id). `profileUrl` points at
+// a public profile the assistant should know about (e.g. an llms.txt); it's
+// fetched and prepended to that user's system prompt. Room to grow as more
+// per-user preferences are added.
+model Setting {
+  user_id    String   @id
+  profileUrl String?  @db.VarChar(500)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("settings")
+}
+
 // Image (and future file) attachments, stored as bytes in Postgres — no S3.
 // Referenced from a Message part via /api/attachments/{id}; served by an
 // auth-checked Nitro route that verifies the viewer owns it.
