@@ -6,6 +6,10 @@
 export const BOT_NAME = 'Meizuno AI'
 export const WELCOME_MESSAGE = 'Hello! How can I help you today?'
 
-// Optional token pricing for the cost readout. Leave undefined to fall back to
-// useUsage's built-in price band; set to enable an exact per-model estimate.
-export const PRICING: { inputPerMillion: number, outputPerMillion: number } | undefined = undefined
+// Token pricing for the cost readout, matching CHAT_MODEL (gpt-5.6-luna:
+// $0.20 in / $1.20 out per 1M tokens). Set undefined to fall back to
+// useUsage's built-in price band.
+export const PRICING: { inputPerMillion: number, outputPerMillion: number } | undefined = {
+  inputPerMillion: 0.20,
+  outputPerMillion: 1.20
+}
