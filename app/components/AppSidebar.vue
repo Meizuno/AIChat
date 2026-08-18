@@ -88,21 +88,20 @@ async function handleLogout() {
 
     <!-- New chat + history list -->
     <UButton
-      icon="i-lucide-plus"
+      icon="i-lucide-square-pen"
       label="New chat"
       color="neutral"
-      variant="soft"
+      variant="ghost"
       block
       class="justify-start"
       @click="newChatAndGo"
     />
-    <USeparator class="my-1" />
+    <USeparator />
     <div class="flex-1 min-h-0 overflow-y-auto -mx-2 px-2 space-y-0.5">
       <div
         v-for="c in chats"
         :key="c.id"
-        class="group flex items-center gap-1 rounded-lg pr-1"
-        :class="c.id === activeChatId ? 'bg-elevated' : 'hover:bg-elevated/60'"
+        class="flex items-center gap-1"
       >
         <!-- Rename mode: inline input -->
         <UInput
@@ -115,28 +114,38 @@ async function handleLogout() {
           @keydown.esc="editingId = null"
           @blur="onRenameBlur"
         />
-        <template v-else>
-          <button
-            class="flex-1 min-w-0 text-left text-sm px-2 py-1.5 truncate"
+        <div
+          v-else
+          class="relative flex-1 min-w-0"
+        >
+          <UButton
+            :label="c.title"
+            icon="i-lucide-message-square"
+            color="neutral"
+            :variant="c.id === activeChatId ? 'soft' : 'ghost'"
+            block
+            class="justify-start pe-9"
+            :ui="{ label: 'truncate' }"
             @click="selectChat(c.id)"
-          >
-            {{ c.title }}
-          </button>
-          <UDropdownMenu
-            :items="chatMenu(c)"
-            :content="{ align: 'end' }"
-          >
-            <UButton
-              icon="i-lucide-ellipsis"
-              color="neutral"
-              variant="ghost"
-              size="xs"
-              class="text-muted"
-              aria-label="Chat options"
-              @click.stop
-            />
-          </UDropdownMenu>
-        </template>
+          />
+          <!-- Options menu overlaid inside the button's right edge -->
+          <div class="absolute end-1 top-1/2 -translate-y-1/2">
+            <UDropdownMenu
+              :items="chatMenu(c)"
+              :content="{ align: 'end' }"
+            >
+              <UButton
+                icon="i-lucide-ellipsis"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                class="text-muted"
+                aria-label="Chat options"
+                @click.stop
+              />
+            </UDropdownMenu>
+          </div>
+        </div>
       </div>
       <p
         v-if="!chats.length"
