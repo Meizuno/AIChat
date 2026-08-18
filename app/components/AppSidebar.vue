@@ -96,6 +96,7 @@ async function handleLogout() {
       class="justify-start"
       @click="newChatAndGo"
     />
+    <USeparator class="my-1" />
     <div class="flex-1 min-h-0 overflow-y-auto -mx-2 px-2 space-y-0.5">
       <div
         v-for="c in chats"
