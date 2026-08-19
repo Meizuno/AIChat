@@ -83,7 +83,7 @@ async function handleLogout() {
   <UDashboardSidebar
     v-model:open="sidebarOpen"
     toggle-side="right"
-    :ui="{ header: 'border-b border-default' }"
+    :ui="{ header: 'border-b border-default mb-2' }"
   >
     <template #header>
       <NuxtLink
