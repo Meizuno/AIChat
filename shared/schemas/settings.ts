@@ -10,10 +10,26 @@ export const suggestedPromptSchema = z.object({
   prompt: z.string().trim().min(1).max(2000)
 })
 
+// The profile document is fetched server-side from inside the Docker network
+// and its body is injected into the system prompt (readable back out of the
+// model), so this is an SSRF-with-exfiltration surface. Require https here — the
+// runtime host resolution in server/utils/profile.ts is the second line of
+// defence. Empty string is still allowed (it clears the setting).
+const httpsProfileUrl = z
+  .string()
+  .trim()
+  .url()
+  .refine((u) => {
+    try {
+      return new URL(u).protocol === 'https:'
+    } catch {
+      return false
+    }
+  }, 'Profile URL must use https')
+
 export const updateSettingsSchema = z
   .object({
-    // A valid URL or an empty string (to clear it).
-    profileUrl: z.union([z.string().trim().url(), z.literal('')]).optional(),
+    profileUrl: z.union([httpsProfileUrl, z.literal('')]).optional(),
     suggestedPrompts: z.array(suggestedPromptSchema).max(20).optional()
   })
   .strict()
