@@ -98,28 +98,28 @@ const chartOptions = {
             :options="chartOptions"
           />
         </div>
-        <!-- Legend -->
-        <div class="mt-4 grid gap-1.5">
+        <!-- Legend: compact inline chips (label + value adjacent, wrapping) -->
+        <div class="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1.5">
           <div
             v-for="item in items"
             :key="item.label"
-            class="flex items-center gap-2"
+            class="flex items-center gap-1.5 text-xs"
           >
             <span
               class="h-2.5 w-2.5 shrink-0 rounded-full"
               :style="{ backgroundColor: item.color }"
             />
-            <span class="flex-1 text-xs font-medium text-slate-700 dark:text-slate-200">{{ item.label }}</span>
-            <span class="text-xs text-slate-500 dark:text-slate-400">{{ fmt(item.value) }}{{ unit }}</span>
+            <span class="font-medium text-slate-700 dark:text-slate-200">{{ item.label }}</span>
+            <span class="text-slate-500 dark:text-slate-400">{{ fmt(item.value) }}{{ unit }}</span>
           </div>
         </div>
       </template>
-      <p
+      <!-- Not-yet-parseable (e.g. the block is still streaming) — show a
+           skeleton rather than an error, then render once the JSON completes. -->
+      <USkeleton
         v-else
-        class="text-sm text-slate-500 dark:text-slate-400"
-      >
-        Invalid chart data.
-      </p>
+        class="h-64 w-full rounded-xl"
+      />
     </div>
   </ClientOnly>
 </template>
