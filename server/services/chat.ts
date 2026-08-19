@@ -49,13 +49,16 @@ export async function streamChatResponse(event: H3Event, body: ChatBody) {
   }
   const tools = useMock ? undefined : await getChatTools(event)
 
-  // Prepend the user's configured profile (a public llms.txt-style page set in
-  // their settings) so the assistant knows who it works for. No-op if unset or
-  // it can't be fetched.
+  // Append the user's configured profile (a public llms.txt-style page set in
+  // their settings) so the assistant knows who it works for. It's a remote,
+  // mutable document, so it's fenced as an explicitly-untrusted block (see
+  // wrapUserProfile + SYSTEM_PROMPT) rather than given system authority. No-op
+  // if unset or it can't be fetched.
   const basePrompt = SYSTEM_PROMPT.replace('{date}', new Date().toISOString().slice(0, 10))
-  const profile = await getUserProfile(userId)
+  const profileUrl = await getUserProfileUrl(userId)
+  const profile = await fetchProfile(profileUrl)
   const systemPrompt = profile
-    ? `${basePrompt}\n\n# About the user you assist\n${profile}`
+    ? `${basePrompt}\n\n${wrapUserProfile(profile, profileUrl)}`
     : basePrompt
 
   // Rehydrate any stored `/api/attachments/{id}` image parts back to data URLs

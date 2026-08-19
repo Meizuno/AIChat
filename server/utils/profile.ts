@@ -175,7 +175,19 @@ export async function fetchProfile(url: string): Promise<string> {
   return text
 }
 
-/** The resolved profile text for a user (their configured profile, if any). */
-export async function getUserProfile(userId: string): Promise<string> {
-  return fetchProfile(await getUserProfileUrl(userId))
+// ── Fencing as untrusted reference data ──────────────────────────────────────
+
+const PROFILE_TAG = 'user_profile'
+
+/**
+ * Fence a fetched profile as a delimited, explicitly-untrusted block for the
+ * system prompt. A remote, mutable document must not gain system-message
+ * authority (several MCP tools perform writes), so any closing delimiter inside
+ * the document is neutralized — a hostile doc can't end the block early and
+ * smuggle in content after it.
+ */
+export function wrapUserProfile(text: string, url: string): string {
+  const safe = text.replace(new RegExp(`<\\s*/\\s*${PROFILE_TAG}\\s*>`, 'gi'), `[/${PROFILE_TAG}]`)
+  const source = url.replace(/"/g, '&quot;')
+  return `<${PROFILE_TAG} source="${source}" trust="untrusted">\n${safe}\n</${PROFILE_TAG}>`
 }
