@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { isDisallowedAddress } from '../../../server/utils/profile'
+import {
+  isDisallowedAddress,
+  isTextProfileContentType,
+  boundProfileText,
+  cacheSetBounded
+} from '../../../server/utils/profile'
 
 describe('isDisallowedAddress', () => {
   it('rejects loopback', () => {
@@ -39,5 +44,48 @@ describe('isDisallowedAddress', () => {
     expect(isDisallowedAddress('8.8.8.8')).toBe(false)
     expect(isDisallowedAddress('2606:4700:4700::1111')).toBe(false) // cloudflare v6
     expect(isDisallowedAddress('172.32.0.1')).toBe(false) // just outside 172.16/12
+  })
+})
+
+describe('isTextProfileContentType', () => {
+  it('accepts text/plain and text/markdown (with params)', () => {
+    expect(isTextProfileContentType('text/plain')).toBe(true)
+    expect(isTextProfileContentType('text/plain; charset=utf-8')).toBe(true)
+    expect(isTextProfileContentType('text/markdown')).toBe(true)
+  })
+
+  it('rejects html, json, binary, and missing', () => {
+    expect(isTextProfileContentType('text/html')).toBe(false)
+    expect(isTextProfileContentType('application/json')).toBe(false)
+    expect(isTextProfileContentType('application/octet-stream')).toBe(false)
+    expect(isTextProfileContentType(null)).toBe(false)
+  })
+})
+
+describe('boundProfileText', () => {
+  it('leaves short documents untouched', () => {
+    expect(boundProfileText('  hello\nworld  ')).toBe('hello\nworld')
+  })
+
+  it('truncates over-length docs on a line boundary with a marker', () => {
+    const long = Array.from({ length: 4000 }, (_, i) => `line ${i}`).join('\n')
+    const out = boundProfileText(long)
+    expect(Buffer.byteLength(out, 'utf8')).toBeLessThanOrEqual(16 * 1024 + 32)
+    expect(out.endsWith('[profile truncated]')).toBe(true)
+    // Cut on a newline — no partial trailing line before the marker.
+    const body = out.slice(0, out.lastIndexOf('\n\n[profile truncated]'))
+    expect(long.startsWith(body)).toBe(true)
+    expect(body.split('\n').at(-1)).toMatch(/^line \d+$/)
+  })
+})
+
+describe('cacheSetBounded', () => {
+  it('drops the oldest entry once past the bound', () => {
+    const map = new Map<string, number>()
+    for (let i = 0; i < 101; i++) cacheSetBounded(map, `k${i}`, i, 100)
+    expect(map.size).toBe(100)
+    expect(map.has('k0')).toBe(false) // oldest evicted
+    expect(map.has('k1')).toBe(true)
+    expect(map.has('k100')).toBe(true)
   })
 })

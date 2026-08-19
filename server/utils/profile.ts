@@ -14,11 +14,15 @@ import { isIP } from 'node:net'
 // internal one). Any rejection degrades to an empty profile — never throws into
 // the stream path.
 //
-// Documents are cached by URL for TTL_MS; a failed/blocked fetch caches empty
+// Only text/plain or text/markdown responses count, and the stored text is
+// capped at 16 KB (truncated on a line boundary). Documents are cached by URL
+// for TTL_MS (bounded to 100 entries); a failed/blocked fetch caches empty
 // (negative caching) so a flapping or hostile host can't slow every message.
 
 const TTL_MS = 60 * 60 * 1000
 const FETCH_TIMEOUT_MS = 10_000
+const MAX_PROFILE_BYTES = 16 * 1024
+const MAX_CACHE_ENTRIES = 100
 const cache = new Map<string, { text: string, at: number }>()
 
 /** The profile URL a user configured in their settings (empty when unset). */
@@ -81,6 +85,40 @@ export function isDisallowedAddress(ip: string): boolean {
   return true
 }
 
+// ── Bounding the document — pure, unit-testable ──────────────────────────────
+
+/** True for the content types we accept as a profile document (text only). */
+export function isTextProfileContentType(contentType: string | null): boolean {
+  const ct = (contentType ?? '').toLowerCase()
+  return ct.includes('text/plain') || ct.includes('text/markdown')
+}
+
+/**
+ * Trim the document to MAX_PROFILE_BYTES on a line boundary, appending an
+ * explicit `[profile truncated]` marker so the model knows it is incomplete.
+ * Byte-based (not char) so multi-byte content can't exceed the cap.
+ */
+export function boundProfileText(raw: string): string {
+  const text = raw.trim()
+  if (Buffer.byteLength(text, 'utf8') <= MAX_PROFILE_BYTES) return text
+  let slice = Buffer.from(text, 'utf8').subarray(0, MAX_PROFILE_BYTES).toString('utf8')
+  const lastNl = slice.lastIndexOf('\n')
+  if (lastNl > 0) slice = slice.slice(0, lastNl)
+  return `${slice.trimEnd()}\n\n[profile truncated]`
+}
+
+/**
+ * `Map.set` that drops the oldest entry once the map exceeds `max` (Maps keep
+ * insertion order), so the URL-keyed profile cache can't grow without bound.
+ */
+export function cacheSetBounded<K, V>(map: Map<K, V>, key: K, value: V, max: number): void {
+  map.set(key, value)
+  if (map.size > max) {
+    const oldest = map.keys().next().value
+    if (oldest !== undefined) map.delete(oldest)
+  }
+}
+
 // ── Fetch ─────────────────────────────────────────────────────────────────--
 
 async function loadProfile(url: string): Promise<string> {
@@ -108,7 +146,12 @@ async function loadProfile(url: string): Promise<string> {
     console.warn('[profile] non-ok status', res.status, url)
     return ''
   }
-  return (await res.text()).trim()
+  // Require a text document — HTML/JSON/binary is not a profile.
+  if (!isTextProfileContentType(res.headers.get('content-type'))) {
+    console.warn('[profile] unexpected content-type', res.headers.get('content-type') ?? '(none)', url)
+    return ''
+  }
+  return boundProfileText(await res.text())
 }
 
 /**
@@ -126,7 +169,9 @@ export async function fetchProfile(url: string): Promise<string> {
   } catch (err) {
     console.warn('[profile] could not fetch', url, '-', (err as Error).message)
   }
-  cache.set(url, { text, at: Date.now() })
+  // Cache the result (empty on failure — negative caching is deliberate),
+  // bounded so the map can't grow without limit.
+  cacheSetBounded(cache, url, { text, at: Date.now() }, MAX_CACHE_ENTRIES)
   return text
 }
 
