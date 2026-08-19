@@ -20,6 +20,8 @@ let store: ReturnType<typeof createStore> | null = null
 
 function createStore() {
   const { usage, accumulate: accumulateUsage, estimatedCost } = useUsage(() => PRICING)
+  // Captured here (setup context) so the streaming onData callback can raise it.
+  const toast = useToast()
 
   const input = ref('')
 
@@ -36,6 +38,16 @@ function createStore() {
       onData(part) {
         if (part.type === 'data-usage') {
           accumulateUsage(part.data as { inputTokens?: number, outputTokens?: number, totalTokens?: number })
+        } else if (part.type === 'data-notice') {
+          const notice = part.data as { kind?: string, limit?: number }
+          if (notice.kind === 'step-limit') {
+            toast.add({
+              title: 'Step limit reached',
+              description: `Stopped after ${notice.limit} tool steps — ask me to continue.`,
+              color: 'warning',
+              icon: 'i-lucide-octagon-alert'
+            })
+          }
         }
       },
       onError(error) {
