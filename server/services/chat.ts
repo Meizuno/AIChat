@@ -4,6 +4,11 @@ import { createOpenAI } from '@ai-sdk/openai'
 import type { H3Event } from 'h3'
 import type { ChatBody } from '#shared/schemas/chat'
 
+// Cap on the tool-calling loop. Users add their own MCP servers at runtime, so
+// the tool count is unbounded and a multi-server task can hit this — when it
+// does we tell the client rather than ending silently (see below).
+const STEP_LIMIT = 5
+
 // Derive a chat title from the first user message's text (truncated).
 function deriveTitle(messages: UIMessage[]): string {
   const firstUser = messages.find(m => m.role === 'user')
@@ -49,13 +54,16 @@ export async function streamChatResponse(event: H3Event, body: ChatBody) {
   }
   const tools = useMock ? undefined : await getChatTools(event)
 
-  // Prepend the user's configured profile (a public llms.txt-style page set in
-  // their settings) so the assistant knows who it works for. No-op if unset or
-  // it can't be fetched.
+  // Append the user's configured profile (a public llms.txt-style page set in
+  // their settings) so the assistant knows who it works for. It's a remote,
+  // mutable document, so it's fenced as an explicitly-untrusted block (see
+  // wrapUserProfile + SYSTEM_PROMPT) rather than given system authority. No-op
+  // if unset or it can't be fetched.
   const basePrompt = SYSTEM_PROMPT.replace('{date}', new Date().toISOString().slice(0, 10))
-  const profile = await getUserProfile(userId)
+  const profileUrl = await getUserProfileUrl(userId)
+  const profile = await fetchProfile(profileUrl)
   const systemPrompt = profile
-    ? `${basePrompt}\n\n# About the user you assist\n${profile}`
+    ? `${basePrompt}\n\n${wrapUserProfile(profile, profileUrl)}`
     : basePrompt
 
   // Rehydrate any stored `/api/attachments/{id}` image parts back to data URLs
@@ -68,7 +76,7 @@ export async function streamChatResponse(event: H3Event, body: ChatBody) {
     system: systemPrompt,
     messages: await convertToModelMessages(modelMessages as Parameters<typeof convertToModelMessages>[0]),
     tools,
-    stopWhen: stepCountIs(5),
+    stopWhen: stepCountIs(STEP_LIMIT),
     // Ask OpenAI reasoning models to stream a summary of their reasoning so the
     // UI can show it live. Namespaced by provider → a no-op for the mock model;
     // only reasoning-capable models actually emit it.
@@ -84,6 +92,15 @@ export async function streamChatResponse(event: H3Event, body: ChatBody) {
         writer.merge(result.toUIMessageStream({ sendReasoning: true }))
         const usage = await result.usage
         writer.write({ type: 'data-usage', data: usage } as never)
+
+        // If the run stopped because the step budget was exhausted — the model
+        // still wanted to call tools at the cap — surface it to the client
+        // (same transient data-part channel as the usage envelope) so the run
+        // doesn't just end with no explanation.
+        const [finishReason, steps] = await Promise.all([result.finishReason, result.steps])
+        if (finishReason === 'tool-calls' && steps.length >= STEP_LIMIT) {
+          writer.write({ type: 'data-notice', data: { kind: 'step-limit', limit: STEP_LIMIT } } as never)
+        }
       },
       // The completed turn (original + new assistant message) is persisted
       // wholesale to the chat. Image data URLs are offloaded to the Attachment
