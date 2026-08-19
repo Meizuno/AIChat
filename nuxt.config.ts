@@ -46,7 +46,8 @@ export default defineNuxtConfig({
       langs: [
         'typescript', 'javascript', 'vue', 'python', 'bash', 'json', 'html', 'css', 'sql',
         { name: 'chart', scopeName: 'source.chart', patterns: [], fileTypes: [], repository: {} },
-        { name: 'list', scopeName: 'source.list', patterns: [], fileTypes: [], repository: {} }
+        { name: 'list', scopeName: 'source.list', patterns: [], fileTypes: [], repository: {} },
+        { name: 'mermaid', scopeName: 'source.mermaid', patterns: [], fileTypes: [], repository: {} }
       ]
     }
   },

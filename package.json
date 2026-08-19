@@ -36,6 +36,7 @@
     "d3-force": "^3.0.0",
     "js-yaml": "^4.1.1",
     "katex": "^0.18.4",
+    "mermaid": "^11.16.1",
     "nuxt": "^4.4.2",
     "rehype-katex": "^7.0.1",
     "remark-math": "^6.0.0",

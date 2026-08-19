@@ -27,4 +27,20 @@ emitting a fenced \`chart\` code block whose body is JSON:
 Each entry in \`data\` is one bar: a \`label\` and a numeric \`value\` (\`color\` is
 optional; a palette fills in the rest). Put only valid JSON inside the block.
 Use it for genuine quantitative comparisons — for one or two numbers, plain
-text or a small table is clearer.`
+text or a small table is clearer.
+
+## Diagrams
+
+For relationships, flows, processes, or structure — flowcharts, sequence
+diagrams, state machines, ER/class diagrams — emit a fenced \`mermaid\` code
+block with Mermaid syntax:
+
+\`\`\`mermaid
+flowchart LR
+  A[Start] --> B{Decision}
+  B -->|yes| C[Do it]
+  B -->|no| D[Skip]
+\`\`\`
+
+Use it when a picture explains the structure better than prose. Keep the
+Mermaid syntax valid — invalid diagrams render an error instead.`

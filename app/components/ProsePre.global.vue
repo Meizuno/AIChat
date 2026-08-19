@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ProseChart from './content/ProseChart.global.vue'
+import ProseMermaid from './content/ProseMermaid.global.vue'
 
 defineOptions({ inheritAttrs: false })
 
@@ -28,6 +29,10 @@ async function copyCode() {
 <template>
   <ProseChart
     v-if="language === 'chart'"
+    :code="code"
+  />
+  <ProseMermaid
+    v-else-if="language === 'mermaid'"
     :code="code"
   />
   <!-- Code-block surface is theme-aware: a Snow-Storm-ish slate-50
