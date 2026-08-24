@@ -1,5 +1,4 @@
 <template>
-  <tbody class="divide-y divide-slate-200/70 dark:divide-slate-700/60">
-    <slot />
-  </tbody>
+  <!-- Transparent: rows flow directly into the ProseTable grid. -->
+  <slot />
 </template>
