@@ -66,10 +66,10 @@ export async function streamChatResponse(event: H3Event, body: ChatBody) {
     ? `${basePrompt}\n\n${wrapUserProfile(profile, profileUrl)}`
     : basePrompt
 
-  // Rehydrate any stored `/api/attachments/{id}` image parts back to data URLs
-  // (no-op for fresh turns, which already carry data URLs) so the model gets
-  // the image inline — it can't fetch our private, auth-gated route.
-  const modelMessages = await rehydrateImages(userId, originalMessages)
+  // Rehydrate any stored `/media/{key}` image parts back to data URLs (no-op
+  // for fresh turns, which already carry data URLs) so the model gets the image
+  // inline rather than depending on our public host being reachable.
+  const modelMessages = await rehydrateImages(originalMessages)
 
   const result = streamText({
     model,
@@ -103,11 +103,12 @@ export async function streamChatResponse(event: H3Event, body: ChatBody) {
         }
       },
       // The completed turn (original + new assistant message) is persisted
-      // wholesale to the chat. Image data URLs are offloaded to the Attachment
-      // table first so the messages row stays small. No-op without a chat id.
+      // wholesale to the chat. Image data URLs are offloaded to the on-disk
+      // blob store first so the messages row stays small. No-op without a
+      // chat id.
       onFinish: async ({ messages }) => {
         if (!chatId) return
-        const toStore = await offloadImages(userId, messages)
+        const toStore = await offloadImages(messages)
         await saveChatMessages(userId, chatId, toStore)
       }
     })

@@ -9,12 +9,16 @@ completions, to MCP servers for tool calls, and to an external auth service
 for sessions.
 
 **Persistence (added later).** ai-chat was originally stateless; it now owns
-**per-user chat history** in **Postgres via Prisma** — `Chat`, `Message`
-(parts stored as JSONB), and `Attachment` (image bytes as `bytea`, no S3).
-So the CRUD-app patterns below (Prisma, migrations, a scoped data-access
-layer, `viewerId(event)` filtering) **do apply now**, mirroring the siblings.
-Data access lives in `server/utils/chats.ts` + `server/utils/attachments.ts`,
-always scoped by the SSO `userId`.
+**per-user chat history** in **Postgres via Prisma** — `Chat` and `Message`
+(parts stored as JSONB). Image **attachments live on disk**, not in Postgres:
+a `BlobStorage` interface (`server/utils/blob-storage.ts`, disk impl today, S3
+later) stores the bytes and returns an unguessable `<uuid>.<ext>` key; the
+message part carries a public `/media/{key}` URL served by `server/routes/media`
+(outside `/api`, so it's ungated — capability-URL access). So the CRUD-app
+patterns below (Prisma, migrations, a scoped data-access layer, `viewerId(event)`
+filtering) **do apply now**, mirroring the siblings. Data access lives in
+`server/utils/chats.ts`; attachment offload/rehydrate/cleanup in
+`server/utils/attachments.ts` (chat rows scoped by the SSO `userId`).
 
 ---
 
@@ -373,8 +377,9 @@ If tempted to add any of the following, **stop and confirm with the human
 first**:
 
 - ⚠️ **More persisted domain data beyond chat history.** ai-chat now owns
-  per-user chats/messages/attachments in Postgres (see the persistence note
-  up top). That's the intended scope of its DB. *Other* domain data (notes,
+  per-user chats/messages in Postgres, plus image attachments on disk (see the
+  persistence note up top). That's the intended scope of its DB. *Other* domain
+  data (notes,
   transactions, recipes) still belongs in its own MCP-backed service that
   ai-chat reaches as a tool — don't grow this schema into a general store.
 - ❌ **Repository pattern / ports & adapters.** There's no second
