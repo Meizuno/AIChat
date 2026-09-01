@@ -32,8 +32,8 @@ model Message {
   role      String   @db.VarChar(20) // 'user' | 'assistant'
   // The AI SDK UIMessage.parts array, stored opaquely — the part shape is
   // version-coupled and validated downstream by convertToModelMessages.
-  // Image parts hold a `/api/attachments/{id}` URL (bytes live in Attachment),
-  // never a base64 data URL, to keep this row small.
+  // Image parts hold a public `/media/{key}` URL (bytes live on disk via
+  // BlobStorage), never a base64 data URL, to keep this row small.
   parts     Json
   // Optional token usage for the assistant turn (drives the cost readout).
   usage     Json?
@@ -78,18 +78,4 @@ model Setting {
   updatedAt  DateTime @updatedAt
 
   @@map("settings")
-}
-
-// Image (and future file) attachments, stored as bytes in Postgres — no S3.
-// Referenced from a Message part via /api/attachments/{id}; served by an
-// auth-checked Nitro route that verifies the viewer owns it.
-model Attachment {
-  id        String   @id @default(uuid()) @db.Uuid
-  user_id   String
-  mediaType String   @db.VarChar(100)
-  filename  String?  @db.VarChar(300)
-  bytes     Bytes
-  createdAt DateTime @default(now())
-
-  @@index([user_id])
 }
