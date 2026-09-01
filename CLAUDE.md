@@ -226,8 +226,17 @@ ad-hoc `event.context.user` reads **is a refactor target.**
 ### 6. Structured logging with request context
 
 - Each request gets a `requestId` from `server/middleware/log.ts`, put on
-  `event.context.requestId`, exposed as `x-request-id`, and emitted as
-  one structured consola line on response finish.
+  `event.context.requestId`, exposed as `x-request-id`, and emitted as one
+  inline `key=value` line on response finish (`http level=… request-id=…
+  method=… path=… response=… execution=…ms`).
+- **Log through the tool, never `console.*`.** `getLogger()`
+  (`server/utils/logger.ts`) is a small port — `info`/`warn`/`error`. The
+  default backend prints to the console (Vector → VictoriaLogs) *and* appends
+  each level to its own file (`info.log` / `warning.log` / `error.log`) under
+  `NUXT_LOG_DIR`. Swap the backend there without touching call sites. HTTP
+  level tracks status (5xx→error, 4xx→warn). Framework-internal noise
+  (`/api/_mdc/`, `/api/_nuxt_icon/`) is skipped. (The only exception is the
+  pre-startup env banner in `validate-env`, which runs before the server.)
 
 ### 7. Auth pattern (split between `authenticate` and `tryRefresh`)
 

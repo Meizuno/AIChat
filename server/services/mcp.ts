@@ -74,7 +74,7 @@ export async function getChatTools(event: H3Event): Promise<ToolSet> {
         })
       }
     } catch (err) {
-      console.warn(`[MCP] Could not connect to ${target.name}, skipping:`, (err as Error).message)
+      getLogger().warn('mcp connect failed', { server: target.name, error: (err as Error).message })
     }
   }
   return tools
