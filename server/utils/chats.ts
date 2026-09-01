@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client'
+import type { UIMessage } from 'ai'
 import { Unauthorized } from './errors'
 
 // Scoped data-access for chat history. Every function takes the SSO `userId`
@@ -21,6 +22,17 @@ export function getChat(userId: string, chatId: string) {
     where: { id: chatId, user_id: userId },
     include: { messages: { orderBy: { createdAt: 'asc' } } }
   })
+}
+
+/**
+ * Load a chat's messages as UIMessage[], for the server to rebuild context on a
+ * turn (the client sends only the newest message). Empty if not the user's.
+ * Parts were persisted from UIMessage parts and role is 'user' | 'assistant'.
+ */
+export async function loadChatHistory(userId: string, chatId: string): Promise<UIMessage[]> {
+  const chat = await getChat(userId, chatId)
+  if (!chat) return []
+  return chat.messages.map(m => ({ id: m.id, role: m.role, parts: m.parts })) as unknown as UIMessage[]
 }
 
 /** Create an empty chat for a user. */

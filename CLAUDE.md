@@ -20,6 +20,14 @@ filtering) **do apply now**, mirroring the siblings. Data access lives in
 `server/utils/chats.ts`; attachment offload/rehydrate/cleanup in
 `server/utils/attachments.ts` (chat rows scoped by the SSO `userId`).
 
+**Server-owned context.** The client sends only the *newest* message on a
+submit (`prepareSendMessagesRequest`); the chat service rebuilds prior history
+from the DB (`loadChatHistory`) and applies a token-budgeted sliding window
+(`server/utils/context.ts`) before the model, so a long chat can't grow the
+per-turn cost or overflow the context window. The full transcript is still
+persisted in `onFinish`. Regenerate is the exception — the client sends its
+(already-truncated) transcript, trusted as-is, since the DB lags the edit.
+
 ---
 
 ## The one mental-model difference from a CRUD app
