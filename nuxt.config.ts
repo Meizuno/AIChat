@@ -61,6 +61,11 @@ export default defineNuxtConfig({
     // under the cwd (dev). In prod point it at a mounted volume so uploads
     // survive redeploys; the bytes are served publicly at /media/{key}.
     mediaDir: '',
+    // Directory for on-disk logs (NUXT_LOG_DIR). Empty → `.data/logs` under the
+    // cwd (dev). In prod point it at a mounted volume; each level is appended to
+    // its own file (info.log / warning.log / error.log) and also printed to the
+    // console (which Vector ships to VictoriaLogs).
+    logDir: '',
     // Dev-only: when truthy (NUXT_MOCK_AI=1), /api/chat streams a canned
     // reply from a mock model instead of calling OpenAI — no API key, no
     // token spend, no network. Leave empty in production.

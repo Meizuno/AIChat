@@ -125,14 +125,14 @@ async function loadProfile(url: string): Promise<string> {
   const parsed = new URL(url)
   // Defence in depth — the settings boundary already enforces https.
   if (parsed.protocol !== 'https:') {
-    console.warn('[profile] refusing non-https url', url)
+    getLogger().warn('profile refusing non-https url', { url })
     return ''
   }
   // Resolve the host and refuse if ANY resolved address is internal (all: true
   // covers hosts that publish several A/AAAA records).
   const addresses = await lookup(parsed.hostname, { all: true })
   if (!addresses.length || addresses.some(a => isDisallowedAddress(a.address))) {
-    console.warn('[profile] refusing private/loopback host', parsed.hostname)
+    getLogger().warn('profile refusing private/loopback host', { host: parsed.hostname })
     return ''
   }
   // redirect: 'error' — a permitted host must not be able to bounce to an
@@ -143,12 +143,12 @@ async function loadProfile(url: string): Promise<string> {
     headers: { accept: 'text/plain, text/markdown' }
   })
   if (!res.ok) {
-    console.warn('[profile] non-ok status', res.status, url)
+    getLogger().warn('profile non-ok status', { status: res.status, url })
     return ''
   }
   // Require a text document — HTML/JSON/binary is not a profile.
   if (!isTextProfileContentType(res.headers.get('content-type'))) {
-    console.warn('[profile] unexpected content-type', res.headers.get('content-type') ?? '(none)', url)
+    getLogger().warn('profile unexpected content-type', { contentType: res.headers.get('content-type') ?? '(none)', url })
     return ''
   }
   return boundProfileText(await res.text())
@@ -167,7 +167,7 @@ export async function fetchProfile(url: string): Promise<string> {
   try {
     text = await loadProfile(url)
   } catch (err) {
-    console.warn('[profile] could not fetch', url, '-', (err as Error).message)
+    getLogger().warn('profile could not fetch', { url, error: (err as Error).message })
   }
   // Cache the result (empty on failure — negative caching is deliberate),
   // bounded so the map can't grow without limit.
