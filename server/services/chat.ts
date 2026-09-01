@@ -28,11 +28,19 @@ function deriveTitle(messages: UIMessage[]): string {
 export async function streamChatResponse(event: H3Event, body: ChatBody) {
   const { id: userId } = await requireAuthUser(event)
 
+  // The client sends only the newest message on a normal submit — the server
+  // owns context, so prior history is loaded from the DB and appended here. On
+  // regenerate (or a raw client with no trigger) the messages array is the
+  // transcript, trusted as-is: the DB still holds the pre-regenerate version
+  // until onFinish, so the client's truncated history is authoritative there.
+  const chatId = body.id
+  const rebuildFromDb = !!chatId && body.trigger === 'submit-message'
+  const priorHistory = rebuildFromDb ? await loadChatHistory(userId, chatId!) : []
+  const originalMessages = [...priorHistory, ...(body.messages as UIMessage[])]
+
   // Persistence is opt-in: only when the client sends a chat id. Ensure the
   // chat row exists (ownership-guarded) before streaming; the completed turn
   // is saved in onFinish below.
-  const originalMessages = body.messages as UIMessage[]
-  const chatId = body.id
   if (chatId) await ensureChat(userId, chatId, deriveTitle(originalMessages))
 
   const { openaiApiKey, mockAi } = useRuntimeConfig(event)
@@ -66,10 +74,18 @@ export async function streamChatResponse(event: H3Event, body: ChatBody) {
     ? `${basePrompt}\n\n${wrapUserProfile(profile, profileUrl)}`
     : basePrompt
 
+  // Server-owned context: the model sees only a token-budgeted window of the
+  // most recent messages, not the whole transcript. The full conversation is
+  // still persisted below (onFinish) — we bound only what is *sent* to the
+  // model, which caps per-turn token cost and keeps a long chat from eventually
+  // overflowing the context window. (Summarizing the dropped prefix can layer
+  // on later; a sliding window is the cheap, lossless first step.)
+  const windowed = windowMessages(originalMessages)
+
   // Rehydrate any stored `/media/{key}` image parts back to data URLs (no-op
   // for fresh turns, which already carry data URLs) so the model gets the image
   // inline rather than depending on our public host being reachable.
-  const modelMessages = await rehydrateImages(originalMessages)
+  const modelMessages = await rehydrateImages(windowed)
 
   const result = streamText({
     model,

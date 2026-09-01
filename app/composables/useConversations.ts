@@ -34,7 +34,18 @@ function createStore() {
     return new Chat({
       id,
       messages,
-      transport: new DefaultChatTransport(),
+      transport: new DefaultChatTransport({
+        prepareSendMessagesRequest({ id, messages, trigger, messageId }) {
+          // The server owns context: on a normal submit send only the newest
+          // message and let the server rebuild prior history from the DB (less
+          // upload, no re-sending old images). On regenerate send the
+          // already-truncated transcript, so the server redoes exactly that
+          // turn rather than the DB's not-yet-updated version.
+          return trigger === 'regenerate-message'
+            ? { body: { id, trigger, messageId, messages } }
+            : { body: { id, trigger, messages: messages.slice(-1) } }
+        }
+      }),
       onData(part) {
         if (part.type === 'data-usage') {
           accumulateUsage(part.data as { inputTokens?: number, outputTokens?: number, totalTokens?: number })
