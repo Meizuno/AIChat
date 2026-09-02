@@ -57,14 +57,13 @@ const mcpSummary = computed(() => {
   return `${online}/${total} server${total === 1 ? '' : 's'} online`
 })
 
+// newChat / openChat now navigate (to /chats/new or /chats/<id>) themselves.
 function newChatAndGo() {
   newChat()
-  navigateTo('/')
 }
 
-async function selectChat(id: string) {
-  await openChat(id)
-  navigateTo('/')
+function selectChat(id: string) {
+  openChat(id)
 }
 
 function openSettings() {
@@ -87,7 +86,7 @@ async function handleLogout() {
   >
     <template #header>
       <NuxtLink
-        to="/"
+        to="/chats/new"
         class="flex items-center gap-2 px-2 py-3"
       >
         <img
