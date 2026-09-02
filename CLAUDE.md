@@ -102,6 +102,17 @@ modal); model / system prompt / bot name / welcome / suggested prompts are
 constants (see the two `constants.ts` above). There are no built-in/shared
 servers — each user registers their own.
 
+**System tools vs per-user MCP.** Two distinct tool sources feed the chat
+`ToolSet`. *Per-user MCP tools* come from the user's `McpServer` registry
+(`server/services/mcp.ts`) and are the ones the MCP status UI shows. *System
+tools* (`server/services/system-tools.ts`) are app-owned platform capabilities
+every chat gets — e.g. the sandbox `run_code`, which runs code only in a
+separate, network-isolated component behind the `SandboxRunner` port
+(`server/utils/sandbox.ts`), never in-process, and is gated on `sandboxUrl`.
+System tools are merged into the tool set but are **not** in the registry and
+**not** in `probeMcpServers`, so they never appear in the MCP status UI. Keys:
+system tools are plain (`run_code`); MCP tools are `slug__tool` — no collision.
+
 Before considering work done:
 
 ```sh

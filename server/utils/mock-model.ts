@@ -8,8 +8,13 @@ import type { LanguageModelV3StreamPart } from '@ai-sdk/provider'
 //
 // `ai/test` is imported dynamically so the mock utilities are pulled into the
 // bundle only when mock mode is actually enabled.
-export async function createMockModel(): Promise<LanguageModel> {
+export async function createMockModel(opts: { demoRunCode?: boolean } = {}): Promise<LanguageModel> {
   const { MockLanguageModelV3, simulateReadableStream } = await import('ai/test')
+
+  const mockUsage = (text: number, reasoning = 0) => ({
+    inputTokens: { total: 12, noCache: 12, cacheRead: 0, cacheWrite: 0 },
+    outputTokens: { total: text + reasoning, text, reasoning }
+  })
 
   // A full markdown + LaTeX showcase so every Prose component and the KaTeX math
   // rendering can be verified in dev. LaTeX backslashes are doubled (JS string
@@ -111,38 +116,75 @@ export async function createMockModel(): Promise<LanguageModel> {
   const words = reply.split(/(\s+)/).filter(Boolean)
   const reasoningWords = reasoning.split(/(\s+)/).filter(Boolean)
 
-  // Typed as the provider stream-part union: ReadableStream<T> is invariant in
-  // T, so the chunks must match LanguageModelV3StreamPart exactly. Usage uses
-  // the v6 nested shape; streamText derives the flat data-usage from it.
-  const chunks: LanguageModelV3StreamPart[] = [
+  // The showcase itself: reasoning panel + the full markdown/LaTeX body. Typed
+  // as the provider stream-part union (ReadableStream<T> is invariant, so the
+  // chunks must match LanguageModelV3StreamPart exactly).
+  const showcaseChunks: LanguageModelV3StreamPart[] = [
     { type: 'reasoning-start', id: 'r0' },
     ...reasoningWords.map(word => ({ type: 'reasoning-delta' as const, id: 'r0', delta: word })),
     { type: 'reasoning-end', id: 'r0' },
     { type: 'text-start', id: '0' },
     ...words.map(word => ({ type: 'text-delta' as const, id: '0', delta: word })),
-    { type: 'text-end', id: '0' },
-    {
-      type: 'finish',
-      finishReason: { unified: 'stop', raw: undefined },
-      usage: {
-        inputTokens: { total: 12, noCache: 12, cacheRead: 0, cacheWrite: 0 },
-        outputTokens: { total: words.length + reasoningWords.length, text: words.length, reasoning: reasoningWords.length }
-      }
-    }
+    { type: 'text-end', id: '0' }
   ]
+  const showcaseUsage = mockUsage(words.length, reasoningWords.length)
+
+  // Declare every URL as natively supported so streamText does NOT try to
+  // download attachment data: URLs (which it rejects). The mock ignores message
+  // content anyway.
+  const supportedUrls = { '*': [/.*/] }
+
+  // With the sandbox wired, extend the showcase with a real run_code tool-call:
+  // step 1 streams the full showcase + a Python snippet, the AI SDK runs it
+  // against the sandbox, then step 2 streams the closing note. A stateful
+  // doStream returns the right step each call.
+  if (opts.demoRunCode) {
+    const pySource = [
+      'import math',
+      '',
+      'def fib(n):',
+      '    a, b = 0, 1',
+      '    for _ in range(n):',
+      '        a, b = b, a + b',
+      '    return a',
+      '',
+      'print("Fibonacci:", [fib(i) for i in range(10)])',
+      'print("sqrt(2) =", round(math.sqrt(2), 5))'
+    ].join('\n')
+    const outro = 'And that last block ran real Python in the sandbox — its stdout is shown above, exactly as a live model would receive it.'
+    const outroWords = outro.split(/(\s+)/).filter(Boolean)
+
+    let step = 0
+    return new MockLanguageModelV3({
+      supportedUrls,
+      doStream: async () => {
+        const current = step++
+        const chunks: LanguageModelV3StreamPart[] = current === 0
+          ? [
+              ...showcaseChunks,
+              { type: 'tool-call', toolCallId: 'call_demo_run_code', toolName: 'run_code', input: JSON.stringify({ language: 'python', source: pySource }) },
+              { type: 'finish', finishReason: { unified: 'tool-calls', raw: undefined }, usage: showcaseUsage }
+            ]
+          : [
+              { type: 'text-start', id: '1' },
+              ...outroWords.map(word => ({ type: 'text-delta' as const, id: '1', delta: word })),
+              { type: 'text-end', id: '1' },
+              { type: 'finish', finishReason: { unified: 'stop', raw: undefined }, usage: mockUsage(outroWords.length) }
+            ]
+        return { stream: simulateReadableStream<LanguageModelV3StreamPart>({ initialDelayInMs: current === 0 ? 1000 : 500, chunkDelayInMs: 30, chunks }) }
+      }
+    })
+  }
 
   return new MockLanguageModelV3({
-    // Declare every URL as natively supported so streamText does NOT try to
-    // download attachment data: URLs (which it rejects). The mock ignores
-    // message content anyway.
-    supportedUrls: { '*': [/.*/] },
+    supportedUrls,
     doStream: async () => ({
-      // 1s before the first chunk so the "thinking" indicator is visible,
-      // then stream the words quickly.
+      // 1s before the first chunk so the "thinking" indicator is visible, then
+      // stream the words quickly.
       stream: simulateReadableStream<LanguageModelV3StreamPart>({
         initialDelayInMs: 1000,
         chunkDelayInMs: 30,
-        chunks
+        chunks: [...showcaseChunks, { type: 'finish', finishReason: { unified: 'stop', raw: undefined }, usage: showcaseUsage }]
       })
     })
   })

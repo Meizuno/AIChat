@@ -120,6 +120,16 @@ async function useSuggestedPrompt(item: PromptItem) {
   }
 }
 
+// Key a message part for the v-for. Including the part's `state` forces a
+// re-render when a tool part moves input-available → output-available: the AI
+// SDK mutates the tool part in place, so passing the object to a child
+// component (ChatRunCode) wouldn't otherwise update it live (only on reload,
+// from persisted data). Text parts have no `state`, so their key is stable.
+function partKey(messageId: string, part: { type: string }, index: number): string {
+  const state = (part as { state?: string }).state ?? ''
+  return `${messageId}-${index}-${part.type}-${state}`
+}
+
 function getMessageText(message: { parts?: unknown[] }) {
   if (!message.parts) return ''
   return (message.parts as Parameters<typeof isTextUIPart>[0][])
@@ -314,7 +324,7 @@ const {
             <template
               v-for="(part, index) in message.parts"
               v-else
-              :key="`${message.id}-${part.type}-${index}`"
+              :key="partKey(message.id, part, index)"
             >
               <!-- Live reasoning: a collapsible that streams the model's
                    thinking and auto-collapses when it's done. -->
@@ -323,6 +333,11 @@ const {
                 :text="part.text"
                 :streaming="part.state === 'streaming'"
                 class="mb-3"
+              />
+              <!-- Code executed in the sandbox: shows the source + its output. -->
+              <ChatRunCode
+                v-else-if="part.type === 'tool-run_code'"
+                :part="part"
               />
               <MDC
                 v-else-if="isTextUIPart(part)"
@@ -335,7 +350,7 @@ const {
           <template #actions="{ message }">
             <div class="flex items-center gap-2">
               <UBadge
-                v-if="message.role === 'assistant' && message.parts.some(p => isToolUIPart(p))"
+                v-if="message.role === 'assistant' && message.parts.some(p => isToolUIPart(p) && p.type !== 'tool-run_code')"
                 label="MCP"
                 color="success"
                 variant="subtle"

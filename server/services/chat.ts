@@ -45,12 +45,21 @@ export async function streamChatResponse(event: H3Event, body: ChatBody) {
 
   const { openaiApiKey, mockAi } = useRuntimeConfig(event)
 
-  // Dev short-circuit: a mock model streams a canned reply and no MCP tools
-  // are wired (nothing to call), keeping local chat fully offline.
+  // Dev short-circuit: a mock model streams a canned reply, keeping local chat
+  // offline. System tools (e.g. the sandbox run_code) are still wired in mock
+  // mode so the canned reply can exercise the tool path end-to-end; MCP tools
+  // (which need live upstreams) are not.
   const useMock = ['1', 'true', 'yes'].includes(String(mockAi).toLowerCase())
+
+  // Built-in system tools, available in both modes.
+  const systemTools = getSystemTools()
+
   let model: LanguageModel
   if (useMock) {
-    model = await createMockModel()
+    // Demo the sandbox from the mock only when run_code is actually wired
+    // (NUXT_SANDBOX_URL set) — otherwise the mock would tool-call a tool the
+    // model was never given.
+    model = await createMockModel({ demoRunCode: 'run_code' in systemTools })
   } else {
     const openaiModel = createOpenAI({ apiKey: openaiApiKey })(CHAT_MODEL)
     // The OpenAI provider lists only http(s) image URLs as supported, so the
@@ -60,7 +69,11 @@ export async function streamChatResponse(event: H3Event, body: ChatBody) {
     openaiModel.supportedUrls = { 'image/*': [/^https?:\/\//, /^data:image\//] }
     model = openaiModel
   }
-  const tools = useMock ? undefined : await getChatTools(event)
+  // Tools the model can call: the app's built-in system tools (app-owned, not
+  // shown in the MCP status UI) plus — outside mock mode — the user's own
+  // MCP-server tools. System keys are plain, MCP keys are `slug__tool`, so they
+  // never collide.
+  const tools = useMock ? systemTools : { ...systemTools, ...await getChatTools(event) }
 
   // Append the user's configured profile (a public llms.txt-style page set in
   // their settings) so the assistant knows who it works for. It's a remote,
