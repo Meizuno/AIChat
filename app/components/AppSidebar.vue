@@ -132,7 +132,7 @@ async function handleLogout() {
         >
           <UButton
             :label="c.title"
-            icon="i-lucide-message-square"
+            :icon="c.pinned ? 'i-lucide-pin' : 'i-lucide-message-square'"
             color="neutral"
             :variant="c.id === activeChatId ? 'soft' : 'ghost'"
             block
