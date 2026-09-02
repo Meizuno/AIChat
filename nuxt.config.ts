@@ -66,6 +66,10 @@ export default defineNuxtConfig({
     // its own file (info.log / warning.log / error.log) and also printed to the
     // console (which Vector ships to VictoriaLogs).
     logDir: '',
+    // URL of the separate code-execution sandbox service (NUXT_SANDBOX_URL).
+    // Empty → the built-in `run_code` system tool is disabled. The app only
+    // ever speaks to the sandbox over this URL — it never runs code in-process.
+    sandboxUrl: '',
     // Dev-only: when truthy (NUXT_MOCK_AI=1), /api/chat streams a canned
     // reply from a mock model instead of calling OpenAI — no API key, no
     // token spend, no network. Leave empty in production.
