@@ -18,11 +18,13 @@ model Chat {
   id        String    @id @default(uuid()) @db.Uuid
   user_id   String
   title     String    @default("New chat") @db.VarChar(200)
+  // Pinned chats sort to the top of the user's list.
+  pinned    Boolean   @default(false)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   messages  Message[]
 
-  @@index([user_id, updatedAt]) // list a user's chats, newest-first
+  @@index([user_id, pinned, updatedAt]) // list a user's chats, pinned-first then newest
 }
 
 model Message {

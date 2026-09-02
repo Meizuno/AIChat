@@ -14,7 +14,7 @@ import { PRICING } from '~/constants'
 // carries no user data across SSR requests — the server renders an empty shell
 // and the client hydrates it.
 
-type ChatListItem = { id: string, title: string, updatedAt: string }
+type ChatListItem = { id: string, title: string, updatedAt: string, pinned: boolean }
 
 let store: ReturnType<typeof createStore> | null = null
 
@@ -153,8 +153,19 @@ function createStore() {
   }
 
   // Per-chat ⋯ menu (works on touch, unlike a hover-only button).
+  // Pin/unpin a chat, then refresh so the list re-sorts (pinned-first).
+  async function togglePin(c: ChatListItem) {
+    await $fetch(`/api/chats/${c.id}`, { method: 'PATCH', body: { pinned: !c.pinned } })
+    await refreshChats()
+  }
+
   function chatMenu(c: ChatListItem) {
     return [[
+      {
+        label: c.pinned ? 'Unpin' : 'Pin',
+        icon: c.pinned ? 'i-lucide-pin-off' : 'i-lucide-pin',
+        onSelect: () => togglePin(c)
+      },
       { label: 'Rename', icon: 'i-lucide-pencil', onSelect: () => startRename(c) },
       { label: 'Delete', icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: () => deleteChatById(c.id) }
     ]]

@@ -7,12 +7,12 @@ import { Unauthorized } from './errors'
 // own chats. This is the persistence seam ai-chat previously did without;
 // keep HTTP concerns (status codes) out of here, throw typed domain errors.
 
-/** List a user's chats, newest-first. Titles + timestamps only (no messages). */
+/** List a user's chats, pinned-first then newest. Titles + flags only (no messages). */
 export function listChats(userId: string) {
   return getPrisma().chat.findMany({
     where: { user_id: userId },
-    orderBy: { updatedAt: 'desc' },
-    select: { id: true, title: true, updatedAt: true }
+    orderBy: [{ pinned: 'desc' }, { updatedAt: 'desc' }],
+    select: { id: true, title: true, updatedAt: true, pinned: true }
   })
 }
 
@@ -42,11 +42,11 @@ export function createChat(userId: string, title = 'New chat') {
   })
 }
 
-/** Rename a chat (scoped). Returns the update count (0 = not the user's). */
-export async function renameChat(userId: string, chatId: string, title: string) {
+/** Update a chat's title and/or pinned flag (scoped). Returns the update count (0 = not the user's). */
+export async function updateChat(userId: string, chatId: string, data: { title?: string, pinned?: boolean }) {
   const { count } = await getPrisma().chat.updateMany({
     where: { id: chatId, user_id: userId },
-    data: { title }
+    data
   })
   return count
 }
