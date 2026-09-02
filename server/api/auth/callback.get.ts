@@ -6,5 +6,5 @@ import { sendRedirect } from 'h3'
 // session resolves from those cookies and land the user home.
 export default defineEventHandler(async (event) => {
   const user = await authenticate(event)
-  return sendRedirect(event, user ? '/' : '/login?error=auth_failed')
+  return sendRedirect(event, user ? '/chats/new' : '/login?error=auth_failed')
 })

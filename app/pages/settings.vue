@@ -24,7 +24,7 @@ const active = ref('profile')
             variant="ghost"
             size="xs"
             aria-label="Back to chat"
-            to="/"
+            to="/chats/new"
           />
           <span class="truncate">Settings</span>
         </div>

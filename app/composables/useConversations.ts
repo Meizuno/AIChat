@@ -83,25 +83,41 @@ function createStore() {
     }
   }
 
+  // The route is the source of truth for which chat is open: `/chats/new` for a
+  // fresh one, `/chats/<uuid>` for a saved one. newChat/openChat just navigate;
+  // the chats/[id] page calls syncToChat() with the route param to load it.
+  const route = useRoute()
+
   function newChat() {
-    activeChatId.value = crypto.randomUUID()
-    chat.value = makeChat(activeChatId.value)
     sidebarOpen.value = false
+    navigateTo('/chats/new')
   }
 
-  async function openChat(id: string) {
+  function openChat(id: string) {
     sidebarOpen.value = false
-    if (id === activeChatId.value) return
-    const data = await $fetch<{ messages: Array<{ id: string, role: string, parts: unknown }> }>(`/api/chats/${id}`)
-    const messages = data.messages.map(m => ({ id: m.id, role: m.role, parts: m.parts, metadata: undefined })) as UIMessage[]
-    activeChatId.value = id
-    chat.value = makeChat(id, messages)
+    navigateTo(`/chats/${id}`)
   }
 
   async function deleteChatById(id: string) {
     await $fetch(`/api/chats/${id}`, { method: 'DELETE' })
     await refreshChats()
-    if (id === activeChatId.value) newChat()
+    if (id === activeChatId.value) navigateTo('/chats/new')
+  }
+
+  // Load the chat named by the route param into the shared Chat instance.
+  async function syncToChat(routeId: string) {
+    if (routeId === 'new') {
+      activeChatId.value = crypto.randomUUID()
+      chat.value = makeChat(activeChatId.value)
+      return
+    }
+    // Already showing it — e.g. right after the first message swapped the URL
+    // from /chats/new to /chats/<uuid>. Don't reload the in-flight chat.
+    if (routeId === activeChatId.value) return
+    const data = await $fetch<{ messages: Array<{ id: string, role: string, parts: unknown }> }>(`/api/chats/${routeId}`)
+    const messages = data.messages.map(m => ({ id: m.id, role: m.role, parts: m.parts, metadata: undefined })) as UIMessage[]
+    activeChatId.value = routeId
+    chat.value = makeChat(routeId, messages)
   }
 
   // Inline rename: clicking Rename swaps the title for an input.
@@ -157,8 +173,12 @@ function createStore() {
   })
 
   function onSubmit(files: import('ai').FileUIPart[] = []) {
+    const wasNew = route.params.id === 'new'
     chat.value.sendMessage({ text: input.value, files })
     input.value = ''
+    // A brand-new chat now has an id and is being persisted — reflect it in the
+    // URL (replace, so Back doesn't return to the empty /chats/new).
+    if (wasNew) navigateTo(`/chats/${activeChatId.value}`, { replace: true })
     // UChatMessages pins the new user message to the top and reserves space
     // below it (via --last-message-height) until the response fills the screen.
   }
@@ -173,6 +193,7 @@ function createStore() {
     refreshChats,
     newChat,
     openChat,
+    syncToChat,
     deleteChatById,
     editingId,
     editingTitle,

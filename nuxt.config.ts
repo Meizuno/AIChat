@@ -86,6 +86,12 @@ export default defineNuxtConfig({
     cookieDomain: ''
   },
 
+  // The app lives under /chats: /chats/new for a fresh chat, /chats/<uuid> for a
+  // saved one. Send the bare root there (bookmarks / direct loads).
+  routeRules: {
+    '/': { redirect: '/chats/new' }
+  },
+
   compatibilityDate: '2025-01-15',
 
   // Auto-import server-side use-case functions from server/services

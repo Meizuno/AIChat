@@ -9,7 +9,7 @@ const toast = useToast()
 const error = computed(() => route.query.error as string | undefined)
 
 if (loggedIn.value) {
-  await navigateTo('/')
+  await navigateTo('/chats/new')
 }
 
 onMounted(() => {
